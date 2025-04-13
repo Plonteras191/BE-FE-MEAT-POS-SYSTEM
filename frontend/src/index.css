@@ -1,0 +1,127 @@
+/* src/index.css or src/App.css */
+:root {
+  --primary-color: #8B4513; /* SaddleBrown - Meat color */
+  --secondary-color: #D2B48C; /* Tan */
+  --background-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --text-color: #333;
+  --border-color: #dee2e6;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --success-color: #28a745;
+  --hover-light: #f1f3f5;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+h2, h3, h4 {
+  color: var(--primary-color);
+  margin-top: 0;
+}
+
+button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  background-color: var(--primary-color);
+  color: white;
+  margin-right: 5px; /* Add some spacing between buttons */
+}
+
+button:hover {
+  opacity: 0.9;
+}
+button:active {
+    transform: scale(0.98);
+}
+
+button.danger {
+    background-color: var(--danger-color);
+}
+button.secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+  margin-bottom: 10px; /* Spacing below inputs */
+  box-sizing: border-box; /* Include padding in width */
+  width: 100%; /* Default to full width within their container */
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--secondary-color);
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+tr:hover {
+  background-color: var(--hover-light);
+}
+
+/* Utility classes for alerts */
+.low-stock {
+  color: var(--danger-color);
+  font-weight: bold;
+}
+.near-expiry {
+  color: var(--warning-color);
+  font-weight: bold;
+}
+.low-stock-row {
+    background-color: #f8d7da !important; /* Light red */
+}
+.near-expiry-row {
+     background-color: #fff3cd !important; /* Light yellow */
+}
+
+/* Basic Responsive */
+@media (max-width: 768px) {
+    .container {
+        margin: 10px;
+        padding: 15px;
+    }
+    /* Add more responsive adjustments as needed */
+}
