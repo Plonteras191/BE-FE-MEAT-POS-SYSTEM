@@ -163,6 +163,19 @@ const PointOfSales = () => {
     parseFloat(product.weight) > 0
   );
 
+  // Helper function to check if product can be sold
+  const canProductBeSold = (product) => {
+    return parseFloat(product.weight) > 0 && product.status === 'fresh';
+  };
+
+  // Helper function to get status message
+  const getStatusMessage = (product) => {
+    if (parseFloat(product.weight) <= 0) return "Out of stock";
+    if (product.status === 'expired') return "Expired";
+    if (product.status === 'expiring') return "Expiring soon";
+    return "";
+  };
+
   return (
     <div className="pos-container container">
       <h2>Point of Sales</h2>
@@ -191,25 +204,29 @@ const PointOfSales = () => {
                   <th>Category</th>
                   <th>Available (kg)</th>
                   <th>Price (₱/kg)</th>
+                  <th>Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="no-data">No products found</td>
+                    <td colSpan="6" className="no-data">No products found</td>
                   </tr>
                 ) : (
                   filteredProducts.map(product => (
-                    <tr key={product.product_id}>
+                    <tr key={product.product_id} className={product.status !== 'fresh' ? product.status : ''}>
                       <td>{product.type}</td>
                       <td>{product.category_name || 'N/A'}</td>
                       <td>{product.weight}</td>
                       <td>{product.price}</td>
+                      <td>{product.status}</td>
                       <td>
                         <button 
                           onClick={() => handleAddToCart(product)}
-                          disabled={parseFloat(product.weight) <= 0}
+                          disabled={!canProductBeSold(product)}
+                          title={getStatusMessage(product)}
+                          className={!canProductBeSold(product) ? "disabled-button" : ""}
                         >
                           Sold
                         </button>

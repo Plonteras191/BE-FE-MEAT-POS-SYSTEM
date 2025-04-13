@@ -50,7 +50,7 @@ switch ($method) {
                 echo json_encode(["error" => "Supplier name already exists"]);
             } else {
                 http_response_code(500);
-                echo json_encode(["error" => "Failed to add supplier: " . $stmt->error]);
+                echo json_encode(value: ["error" => "Failed to add supplier: " . $stmt->error]);
             }
         }
         

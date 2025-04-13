@@ -5,12 +5,11 @@ import "../styles/ManageInventory.css";
 const ManageInventory = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  // Removed suppliers state as supplier is now manually entered
   const [formData, setFormData] = useState({
     type: "",
     category_id: "",
     customCategory: "",
-    supplier: "", // changed from supplier_id to supplier (manual input)
+    supplier: "",
     weight: "",
     price: "",
     expiry_date: "",
@@ -22,14 +21,31 @@ const ManageInventory = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
+  const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+  const [expiryItems, setExpiryItems] = useState([]);
 
   const API_URL = "http://localhost/MEAT_POS/backend/api";
+  
+  // Constants for expiry date warnings (in days)
+  const EXPIRY_WARNING_DAYS = 7; // Products expiring within 7 days
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-    // Removed fetchSuppliers() since supplier is now manually input.
+    // Also update product statuses when component mounts
+    updateProductStatuses();
   }, []);
+
+  // Function to update all product statuses based on expiry dates
+  const updateProductStatuses = async () => {
+    try {
+      await axios.patch(`${API_URL}/products.php?action=update_status`);
+      // After updating statuses, fetch products again
+      fetchProducts();
+    } catch (err) {
+      console.error("Failed to update product statuses:", err);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -40,7 +56,7 @@ const ManageInventory = () => {
       const productsData = Array.isArray(response.data) ? response.data : [];
       setProducts(productsData);
       setError(null);
-      checkLowStock(productsData);
+      checkInventoryAlerts(productsData);
     } catch (err) {
       setError("Failed to fetch products");
       console.error(err);
@@ -49,15 +65,22 @@ const ManageInventory = () => {
     }
   };
 
-  const checkLowStock = (productsData = []) => {
+  // Combined function to check both stock and expiry alerts
+  const checkInventoryAlerts = (productsData = []) => {
     if (!Array.isArray(productsData)) {
       console.error("Products data is not an array:", productsData);
       return;
     }
     
+    // Check low stock
     const lowStock = productsData.filter(p => parseFloat(p.weight) <= parseFloat(p.stock_alert));
     setLowStockItems(lowStock);
     setShowStockAlert(lowStock.length > 0);
+    
+    // Check expiring products based on status
+    const expiringItems = productsData.filter(p => p.status === 'expiring');
+    setExpiryItems(expiringItems);
+    setShowExpiryAlert(expiringItems.length > 0);
   };
 
   const fetchCategories = async () => {
@@ -124,7 +147,6 @@ const ManageInventory = () => {
       type: product.type,
       category_id: product.category_id || "",
       customCategory: product.customCategory || "",
-      // Adjust for supplier manual input
       supplier: product.supplier || "",
       weight: product.weight,
       price: product.price,
@@ -208,10 +230,48 @@ const ManageInventory = () => {
     setShowStockAlert(false);
   };
 
+  const closeExpiryAlert = () => {
+    setShowExpiryAlert(false);
+  };
+
+  // Function to get days until expiry for a product
+  const getDaysUntilExpiry = (expiryDate) => {
+    if (!expiryDate) return null;
+    
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  // Function to get row class based on product status and stock level
+  const getRowClassName = (product) => {
+    if (product.status === 'expired') return "expired";
+    if (product.status === 'expiring') return "near-expiry";
+    if (parseFloat(product.weight) <= parseFloat(product.stock_alert)) return "low-stock";
+    return "";
+  };
+
+  // Function to get status badge for the product
+  const getStatusBadge = (product) => {
+    switch (product.status) {
+      case 'expired':
+        return <span className="status-badge expired-badge">EXPIRED</span>;
+      case 'expiring':
+        const daysLeft = getDaysUntilExpiry(product.expiry_date);
+        return <span className="status-badge expiring-badge">Expiring in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="manage-inventory container">
       <h2>Manage Inventory</h2>
       
+      {/* Stock Alert Notification */}
       {showStockAlert && (
         <div className="stock-alert-container">
           <div className="stock-alert">
@@ -227,6 +287,31 @@ const ManageInventory = () => {
                     {item.type} - Current: {item.weight}kg (Alert level: {item.stock_alert}kg)
                   </li>
                 ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Expiry Alert Notification */}
+      {showExpiryAlert && (
+        <div className="expiry-alert-container">
+          <div className="expiry-alert">
+            <div className="expiry-alert-header">
+              <h3>Products Expiring Soon!</h3>
+              <button onClick={closeExpiryAlert} className="close-btn">×</button>
+            </div>
+            <div className="expiry-alert-content">
+              <p>The following products will expire within {EXPIRY_WARNING_DAYS} days:</p>
+              <ul>
+                {expiryItems.map(item => {
+                  const daysLeft = getDaysUntilExpiry(item.expiry_date);
+                  return (
+                    <li key={item.product_id}>
+                      {item.type} - Expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''} ({formatDate(item.expiry_date)})
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -376,6 +461,7 @@ const ManageInventory = () => {
               <th>Weight (kg)</th>
               <th>Price (PHP/kg)</th>
               <th>Expiry Date</th>
+              <th>Status</th>
               <th>Stock Alert</th>
               <th>Actions</th>
             </tr>
@@ -383,17 +469,20 @@ const ManageInventory = () => {
           <tbody>
             {products.length === 0 ? (
               <tr>
-                <td colSpan="8" className="no-data">No products found</td>
+                <td colSpan="9" className="no-data">No products found</td>
               </tr>
             ) : (
               products.map((p) => (
-                <tr key={p.product_id} className={parseFloat(p.weight) <= parseFloat(p.stock_alert) ? "low-stock" : ""}>
+                <tr key={p.product_id} className={getRowClassName(p)}>
                   <td>{p.type}</td>
                   <td>{p.category_name || (p.customCategory ? p.customCategory : 'N/A')}</td>
                   <td>{p.supplier || 'N/A'}</td>
                   <td>{p.weight}</td>
                   <td>{p.price}</td>
                   <td>{formatDate(p.expiry_date)}</td>
+                  <td>
+                    {getStatusBadge(p)}
+                  </td>
                   <td>{p.stock_alert}</td>
                   <td className="action-buttons">
                     <button 

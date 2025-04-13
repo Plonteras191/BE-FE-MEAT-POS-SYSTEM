@@ -369,3 +369,16 @@
     background-color: white;
   }
 }
+
+.disabled-button {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+tr.expired {
+  background-color: #f14e4e;
+}
+
+tr.expiring {
+  background-color: #f1ca4c;
+}

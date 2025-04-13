@@ -3,6 +3,24 @@
 
 require_once 'db_connection.php';
 
+// Function to determine product status based on expiry date
+function determineProductStatus($expiryDate) {
+    if (empty($expiryDate)) {
+        return 'fresh';
+    }
+    
+    $today = date('Y-m-d');
+    $warningDate = date('Y-m-d', strtotime('+7 days'));
+    
+    if ($expiryDate <= $today) {
+        return 'expired';
+    } else if ($expiryDate <= $warningDate) {
+        return 'expiring';
+    } else {
+        return 'fresh';
+    }
+}
+
 // Get all products or a specific product
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['id'])) {
@@ -75,8 +93,15 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
-    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert) 
-            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert')";
+    // Determine status based on expiry date
+    $status = 'fresh';
+    if (!empty($data['expiry_date'])) {
+        $status = determineProductStatus($data['expiry_date']);
+    }
+    $status = $conn->real_escape_string($status);
+    
+    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert, status) 
+            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert', '$status')";
     
     if ($conn->query($sql)) {
         $product_id = $conn->insert_id;
@@ -132,6 +157,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
+    // Determine status based on expiry date
+    $status = 'fresh';
+    if (!empty($data['expiry_date'])) {
+        $status = determineProductStatus($data['expiry_date']);
+    }
+    $status = $conn->real_escape_string($status);
+    
     $sql = "UPDATE products 
             SET type = '$type', 
                 category_id = $category_id, 
@@ -139,7 +171,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 weight = '$weight', 
                 price = '$price', 
                 expiry_date = $expiry_date, 
-                stock_alert = '$stock_alert'
+                stock_alert = '$stock_alert',
+                status = '$status'
             WHERE product_id = $product_id";
     
     if ($conn->query($sql)) {
@@ -160,36 +193,78 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     
     $product_id = $conn->real_escape_string($_GET['id']);
     
-    // Check if product exists in sale_items
-    $checkSql = "SELECT COUNT(*) as count FROM sale_items WHERE product_id = $product_id";
-    $checkResult = $conn->query($checkSql);
-    $row = $checkResult->fetch_assoc();
+    // Start a transaction for safely handling multiple operations
+    $conn->begin_transaction();
     
-    if ($row['count'] > 0) {
-        http_response_code(400);
-        echo json_encode(["error" => "Cannot delete product because it is referenced in sales records"]);
-        exit;
-    }
-    
-    // Check if product exists in stock_adjustments
-    $checkSql = "SELECT COUNT(*) as count FROM stock_adjustments WHERE product_id = $product_id";
-    $checkResult = $conn->query($checkSql);
-    $row = $checkResult->fetch_assoc();
-    
-    if ($row['count'] > 0) {
-        http_response_code(400);
-        echo json_encode(["error" => "Cannot delete product because it has stock adjustment records"]);
-        exit;
-    }
-    
-    // Delete the product
-    $sql = "DELETE FROM products WHERE product_id = $product_id";
-    
-    if ($conn->query($sql)) {
+    try {
+        // First delete from related tables
+        $conn->query("DELETE FROM sale_items WHERE product_id = $product_id");
+        $conn->query("DELETE FROM stock_adjustments WHERE product_id = $product_id");
+        
+        // Then delete the product
+        $sql = "DELETE FROM products WHERE product_id = $product_id";
+        $result = $conn->query($sql);
+        
+        if (!$result) {
+            throw new Exception("Failed to delete product: " . $conn->error);
+        }
+        
+        // Commit the transaction
+        $conn->commit();
         echo json_encode(["message" => "Product deleted successfully"]);
-    } else {
+        
+    } catch (Exception $e) {
+        // Roll back the transaction on error
+        $conn->rollback();
         http_response_code(500);
-        echo json_encode(["error" => "Failed to delete product: " . $conn->error]);
+        echo json_encode(["error" => $e->getMessage()]);
+    }
+}
+
+// Update all products' status based on expiry dates
+else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_GET['action'] === 'update_status') {
+    $conn->begin_transaction();
+    
+    try {
+        // Get all products with expiry dates
+        $sql = "SELECT product_id, expiry_date FROM products WHERE expiry_date IS NOT NULL";
+        $result = $conn->query($sql);
+        
+        if (!$result) {
+            throw new Exception("Failed to fetch products: " . $conn->error);
+        }
+        
+        $today = date('Y-m-d');
+        $warningDate = date('Y-m-d', strtotime('+7 days'));
+        
+        // Update expired products
+        $expiredSql = "UPDATE products 
+                      SET status = 'expired' 
+                      WHERE expiry_date IS NOT NULL AND expiry_date <= '$today'";
+        $conn->query($expiredSql);
+        
+        // Update expiring products
+        $expiringSql = "UPDATE products 
+                       SET status = 'expiring' 
+                       WHERE expiry_date IS NOT NULL 
+                       AND expiry_date > '$today' 
+                       AND expiry_date <= '$warningDate'";
+        $conn->query($expiringSql);
+        
+        // Update fresh products
+        $freshSql = "UPDATE products 
+                    SET status = 'fresh' 
+                    WHERE expiry_date IS NULL 
+                    OR (expiry_date > '$warningDate')";
+        $conn->query($freshSql);
+        
+        $conn->commit();
+        echo json_encode(["message" => "Product statuses updated successfully"]);
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        http_response_code(500);
+        echo json_encode(["error" => $e->getMessage()]);
     }
 }
 

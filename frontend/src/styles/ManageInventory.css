@@ -8,6 +8,8 @@
   --danger: #ff5252;
   --success: #48c774;
   --warning: #ffaa5a;
+  --expiry: #ff9800; /* Orange for expiry warnings */
+  --expired: #ff5252; /* Red for expired products */
   --text-primary: #333333;
   --text-secondary: #666666;
   --text-light: #ffffff;
@@ -177,12 +179,45 @@ button:disabled {
   background-color: rgba(197, 222, 255, 0.2);
 }
 
+/* Low stock row styling */
 .low-stock {
   background-color: rgba(255, 170, 90, 0.15);
 }
 
 .low-stock:hover {
   background-color: rgba(255, 170, 90, 0.25) !important;
+}
+
+/* Near expiry row styling */
+.near-expiry {
+  background-color: rgba(255, 152, 0, 0.15);
+}
+
+.near-expiry:hover {
+  background-color: rgba(255, 152, 0, 0.25) !important;
+}
+
+/* Expired row styling */
+.expired {
+  background-color: rgba(255, 82, 82, 0.15);
+}
+
+.expired:hover {
+  background-color: rgba(255, 82, 82, 0.25) !important;
+}
+
+/* Expiry warning label */
+.expiry-warning {
+  color: var(--expiry);
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+/* Expired label */
+.expired-label {
+  color: var(--expired);
+  font-weight: 700;
+  font-size: 0.9em;
 }
 
 .no-data {
@@ -275,7 +310,8 @@ button:disabled {
 }
 
 /* Stock Alert Popup */
-.stock-alert-container {
+.stock-alert-container,
+.expiry-alert-container {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -284,24 +320,51 @@ button:disabled {
   animation: slideIn 0.3s ease;
 }
 
-.stock-alert {
+/* Position the expiry alert below the stock alert if both are visible */
+.stock-alert-container + .expiry-alert-container {
+  top: 280px; /* Adjust based on average height of stock alert */
+}
+
+.stock-alert,
+.expiry-alert {
   background-color: var(--bg-light);
   border-radius: var(--border-radius);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+}
+
+.stock-alert {
   border-left: 4px solid var(--warning);
 }
 
-.stock-alert-header {
+.expiry-alert {
+  border-left: 4px solid var(--expiry);
+}
+
+.stock-alert-header,
+.expiry-alert-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: rgba(255, 170, 90, 0.2);
   padding: 12px 15px;
+}
+
+.stock-alert-header {
+  background-color: rgba(255, 170, 90, 0.2);
+}
+
+.expiry-alert-header {
+  background-color: rgba(255, 152, 0, 0.2);
 }
 
 .stock-alert-header h3 {
   color: var(--warning);
+  margin: 0;
+  font-size: 18px;
+}
+
+.expiry-alert-header h3 {
+  color: var(--expiry);
   margin: 0;
   font-size: 18px;
 }
@@ -315,22 +378,26 @@ button:disabled {
   padding: 0 5px;
 }
 
-.stock-alert-content {
+.stock-alert-content,
+.expiry-alert-content {
   padding: 15px;
 }
 
-.stock-alert-content p {
+.stock-alert-content p,
+.expiry-alert-content p {
   margin-top: 0;
   color: var(--text-secondary);
 }
 
-.stock-alert-content ul {
+.stock-alert-content ul,
+.expiry-alert-content ul {
   margin: 10px 0 0;
   padding-left: 20px;
   color: var(--text-primary);
 }
 
-.stock-alert-content li {
+.stock-alert-content li,
+.expiry-alert-content li {
   margin-bottom: 5px;
 }
 
@@ -362,9 +429,12 @@ button:disabled {
   .stock-actions {
     flex-direction: row;
   }
+
+  .stock-alert-container + .expiry-alert-container {
+    top: 240px; /* Adjust for smaller screens */
+  }
 }
 
-/* Animations */
 @keyframes slideIn {
   from {
     transform: translateX(100%);
@@ -376,9 +446,40 @@ button:disabled {
   }
 }
 
+/* Expiry date notification animation */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.expired-label {
+  animation: pulse 2s infinite;
+}
+
 /* Loading indicator */
 .inventory-table + p {
   text-align: center;
   padding: 20px;
   color: var(--text-secondary);
+}
+
+/* Responsive adjustments for alert containers on small screens */
+@media (max-width: 480px) {
+  .stock-alert-container,
+  .expiry-alert-container {
+    left: 20px;
+    right: 20px;
+    max-width: calc(100% - 40px);
+  }
+  
+  .stock-alert-container + .expiry-alert-container {
+    top: 220px;
+  }
 }

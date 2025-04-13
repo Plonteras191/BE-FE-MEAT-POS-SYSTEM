@@ -9,14 +9,15 @@ CREATE TABLE categories (
 -- Products Table - Stores all meat products
 CREATE TABLE products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
-    type VARCHAR(100) NOT NULL,             -- Name/type of the meat product
-    category_id INT,                        -- Reference to categories table
-    supplier VARCHAR(100),                  -- Supplier name
-    weight DECIMAL(10,2) NOT NULL,          -- Current stock in kg
-    price DECIMAL(10,2) NOT NULL,           -- Price per kg
-    expiry_date DATE,                       -- Optional expiry date
-    stock_alert DECIMAL(10,2) DEFAULT 10.00, -- Alert threshold
-    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+    type VARCHAR(100) NOT NULL,                 -- Name/type of the meat product
+    category_id INT,                            -- Reference to categories table
+    supplier VARCHAR(100),                      -- Supplier name
+    weight DECIMAL(10,2) NOT NULL,              -- Current stock in kg
+    price DECIMAL(10,2) NOT NULL,               -- Price per kg
+    expiry_date DATE,                           -- Optional expiry date
+    stock_alert DECIMAL(10,2) DEFAULT 10.00,    -- Alert threshold
+    FOREIGN KEY (category_id) REFERENCES categories(category_id),
+    status ENUM('fresh', 'expired', 'expiring') NOT NULL DEFAULT 'fresh'
 );
 
 -- Sales Table - Stores sales transactions
