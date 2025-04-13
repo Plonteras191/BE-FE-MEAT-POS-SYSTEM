@@ -211,7 +211,7 @@ const PointOfSales = () => {
                           onClick={() => handleAddToCart(product)}
                           disabled={parseFloat(product.weight) <= 0}
                         >
-                          Add to Cart
+                          Sold
                         </button>
                       </td>
                     </tr>

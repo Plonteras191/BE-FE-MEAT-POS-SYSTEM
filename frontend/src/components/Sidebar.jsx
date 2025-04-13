@@ -42,28 +42,13 @@ const Sidebar = () => {
           </li>
           <li>
             <NavLink 
-              to="/sales" 
-              className={({ isActive }) => (isActive ? "active" : "")}
-            >
-              Sales Logging
-            </NavLink>
-          </li>
-          <li>
-            <NavLink 
               to="/reports" 
               className={({ isActive }) => (isActive ? "active" : "")}
             >
               Reports
             </NavLink>
           </li>
-          <li>
-            <NavLink 
-              to="/alerts" 
-              className={({ isActive }) => (isActive ? "active" : "")}
-            >
-              Expiration Alerts
-            </NavLink>
-          </li>
+         
           
          
         </ul>
