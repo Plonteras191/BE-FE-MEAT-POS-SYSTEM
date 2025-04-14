@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "../styles/PointOfSales.css";
+import Modal from "./Modal"; // Import the Modal component
 
 const PointOfSales = () => {
   const [products, setProducts] = useState([]);
@@ -11,6 +12,22 @@ const PointOfSales = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Modal state
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    actionButtons: []
+  });
+  
+  // Quantity input modal state
+  const [quantityModal, setQuantityModal] = useState({
+    isOpen: false,
+    product: null,
+    quantity: "1"
+  });
 
   // Adjust the API_URL based on your XAMPP configuration
   const API_URL = "http://localhost/MEAT_POS/backend/api";
@@ -26,31 +43,86 @@ const PointOfSales = () => {
       setProducts(response.data);
       setError(null);
     } catch (err) {
-      setError("Failed to fetch products");
+      showNotification("Error", "Failed to fetch products", "error");
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAddToCart = (product) => {
-    const qtyStr = prompt(`Enter quantity (kg) to sell for ${product.type}:`, "1");
-    const qty = parseFloat(qtyStr);
+  // Show notification modal
+  const showNotification = (title, message, type = "info", actionButtons = []) => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      actionButtons: [...actionButtons, {
+        label: "Close",
+        onClick: () => closeModal(),
+        type: "secondary"
+      }]
+    });
+  };
+
+  // Close the modal
+  const closeModal = () => {
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Open quantity input modal
+  const openQuantityModal = (product) => {
+    setQuantityModal({
+      isOpen: true,
+      product,
+      quantity: "1"
+    });
+  };
+
+  // Close quantity modal
+  const closeQuantityModal = () => {
+    setQuantityModal({
+      isOpen: false,
+      product: null,
+      quantity: "1"
+    });
+  };
+
+  // Handle quantity change in modal
+  const handleQuantityModalChange = (e) => {
+    setQuantityModal(prev => ({
+      ...prev,
+      quantity: e.target.value
+    }));
+  };
+
+  // Handle add to cart from quantity modal
+  const confirmAddToCart = () => {
+    const product = quantityModal.product;
+    const qty = parseFloat(quantityModal.quantity);
     
     if (isNaN(qty) || qty <= 0) {
-      alert("Please enter a valid quantity");
+      showNotification("Invalid Input", "Please enter a valid quantity greater than zero.", "error");
       return;
     }
     
     if (qty > parseFloat(product.weight)) {
-      alert(`Not enough stock for ${product.type}. Available: ${product.weight} kg`);
+      showNotification(
+        "Insufficient Stock", 
+        `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
+        "warning"
+      );
       return;
     }
     
     const existing = cart.find(item => item.product_id === product.product_id);
     if (existing) {
       if (parseFloat(existing.quantity) + qty > parseFloat(product.weight)) {
-        alert(`Not enough stock for ${product.type}. Available: ${product.weight} kg`);
+        showNotification(
+          "Insufficient Stock", 
+          `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
+          "warning"
+        );
         return;
       }
       
@@ -67,6 +139,8 @@ const PointOfSales = () => {
         price: product.price 
       }]);
     }
+    
+    closeQuantityModal();
   };
 
   const handleRemoveFromCart = (productId) => {
@@ -78,12 +152,16 @@ const PointOfSales = () => {
     const qty = parseFloat(newQuantity);
     
     if (isNaN(qty) || qty <= 0) {
-      alert("Please enter a valid quantity");
+      showNotification("Invalid Input", "Please enter a valid quantity greater than zero.", "error");
       return;
     }
     
     if (qty > parseFloat(product.weight)) {
-      alert(`Not enough stock for ${product.type}. Available: ${product.weight} kg`);
+      showNotification(
+        "Insufficient Stock", 
+        `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
+        "warning"
+      );
       return;
     }
     
@@ -101,17 +179,17 @@ const PointOfSales = () => {
 
   const completeSale = async () => {
     if (cart.length === 0) {
-      alert("No products in cart!");
+      showNotification("Empty Cart", "No products in cart!", "warning");
       return;
     }
     
     if (totalAmount <= 0) {
-      alert("Total amount must be greater than zero!");
+      showNotification("Invalid Total", "Total amount must be greater than zero!", "error");
       return;
     }
     
     if (parseFloat(amountPaid) < totalAmount) {
-      alert("Amount paid is less than total amount!");
+      showNotification("Insufficient Payment", "Amount paid is less than total amount!", "warning");
       return;
     }
     
@@ -144,17 +222,24 @@ const PointOfSales = () => {
         });
       }
       
-      setSuccessMessage(`Sale completed! Receipt No: ${receiptNo}`);
+      showNotification(
+        "Sale Completed", 
+        `Sale completed successfully! Receipt No: ${receiptNo}`, 
+        "success"
+      );
       setCart([]);
       setDiscount(0);
       setAmountPaid("");
       fetchProducts(); // Refresh products to get updated stock levels
     } catch (err) {
-      setError("Failed to complete sale: " + (err.response?.data?.error || err.message));
+      showNotification(
+        "Sale Error", 
+        "Failed to complete sale: " + (err.response?.data?.error || err.message),
+        "error"
+      );
       console.error(err);
     } finally {
       setIsLoading(false);
-      setTimeout(() => setSuccessMessage(""), 5000);
     }
   };
 
@@ -182,6 +267,54 @@ const PointOfSales = () => {
       
       {error && <div className="error-message">{error}</div>}
       {successMessage && <div className="success-message">{successMessage}</div>}
+      
+      {/* Modal for notifications */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        type={modalConfig.type}
+        actionButtons={modalConfig.actionButtons}
+      >
+        <p>{modalConfig.message}</p>
+      </Modal>
+      
+      {/* Modal for quantity input */}
+      <Modal
+        isOpen={quantityModal.isOpen}
+        onClose={closeQuantityModal}
+        title={`Enter Quantity for ${quantityModal.product?.type || ""}`}
+        type="info"
+        actionButtons={[
+          {
+            label: "Add to Cart",
+            onClick: confirmAddToCart,
+            type: "primary"
+          },
+          {
+            label: "Cancel",
+            onClick: closeQuantityModal,
+            type: "secondary"
+          }
+        ]}
+      >
+        <div className="quantity-modal-content">
+          <p>Available: {quantityModal.product?.weight || 0} kg</p>
+          <p>Price: ₱{quantityModal.product?.price || 0}/kg</p>
+          <div className="form-group">
+            <label htmlFor="quantity-input">Quantity (kg):</label>
+            <input
+              type="number"
+              id="quantity-input"
+              value={quantityModal.quantity}
+              onChange={handleQuantityModalChange}
+              min="0.01"
+              step="0.01"
+              className="quantity-input"
+            />
+          </div>
+        </div>
+      </Modal>
       
       <div className="pos-content">
         <div className="pos-products">
@@ -223,12 +356,12 @@ const PointOfSales = () => {
                       <td>{product.status}</td>
                       <td>
                         <button 
-                          onClick={() => handleAddToCart(product)}
+                          onClick={() => openQuantityModal(product)}
                           disabled={!canProductBeSold(product)}
                           title={getStatusMessage(product)}
                           className={!canProductBeSold(product) ? "disabled-button" : ""}
                         >
-                          Sold
+                         Sell
                         </button>
                       </td>
                     </tr>
@@ -242,7 +375,6 @@ const PointOfSales = () => {
         <div className="sold-products">
           <h3>Shopping Cart</h3>
           <div className="cart-options">
-            {/* Customer selection removed */}
             <div className="form-group">
               <label htmlFor="discount">Discount (%)</label>
               <input
@@ -251,7 +383,18 @@ const PointOfSales = () => {
                 min="0"
                 max="100"
                 value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (isNaN(value) || value < 0) {
+                    showNotification("Invalid Input", "Discount cannot be negative", "error");
+                    return;
+                  }
+                  if (value > 100) {
+                    showNotification("Invalid Input", "Discount cannot exceed 100%", "error");
+                    return;
+                  }
+                  setDiscount(e.target.value);
+                }}
               />
             </div>
           </div>
@@ -314,7 +457,14 @@ const PointOfSales = () => {
                   type="number"
                   id="amount-paid"
                   value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value) || value < 0) {
+                      showNotification("Invalid Input", "Amount paid cannot be negative", "error");
+                      return;
+                    }
+                    setAmountPaid(e.target.value);
+                  }}
                   min="0"
                   step="0.01"
                 />

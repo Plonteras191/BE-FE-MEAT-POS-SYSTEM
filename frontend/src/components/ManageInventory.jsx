@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import "../styles/ManageInventory.css";
+import Modal from "../components/Modal"; // Import the reusable modal component
 
 const ManageInventory = () => {
   const [products, setProducts] = useState([]);
@@ -18,16 +21,44 @@ const ManageInventory = () => {
   const [editingId, setEditingId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
   const [expiryItems, setExpiryItems] = useState([]);
+  
+  // Modal states
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "info",
+    actionButtons: []
+  });
+  
+  // Stock adjustment modal states
+  const [stockAdjustmentModal, setStockAdjustmentModal] = useState({
+    isOpen: false,
+    product: null,
+    reason: "",
+    quantity: "1",
+    notes: ""
+  });
+
+  // Validation modal states
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   const API_URL = "http://localhost/MEAT_POS/backend/api";
   
   // Constants for expiry date warnings (in days)
   const EXPIRY_WARNING_DAYS = 7; // Products expiring within 7 days
+  
+  // Default expiration date (30 days from now)
+  const getDefaultExpiryDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    return date;
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -98,6 +129,17 @@ const ManageInventory = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Input validation for numeric fields
+    if ((name === "weight" || name === "price" || name === "stock_alert") && value !== "" && parseFloat(value) < 0) {
+      showModal({
+        title: "Validation Error",
+        content: `${name.charAt(0).toUpperCase() + name.slice(1)} cannot be negative.`,
+        type: "error"
+      });
+      return;
+    }
+    
     // Clear customCategory if a category is selected (not "custom")
     if (name === "category_id" && value !== "custom") {
       setFormData({ ...formData, [name]: value, customCategory: "" });
@@ -106,17 +148,73 @@ const ManageInventory = () => {
     }
   };
 
+  // Date change handler
+  const handleDateChange = (date) => {
+    setFormData({ ...formData, expiry_date: date ? date.toISOString().split('T')[0] : "" });
+  };
+
+  const validateForm = () => {
+    const errors = [];
+    
+    // Check for negative or zero values
+    if (!formData.weight || parseFloat(formData.weight) <= 0) {
+      errors.push("Weight must be greater than 0.");
+    }
+    
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      errors.push("Price must be greater than 0.");
+    }
+    
+    if (formData.stock_alert && parseFloat(formData.stock_alert) <= 0) {
+      errors.push("Stock alert must be greater than 0.");
+    }
+    
+    // Check if expiry date is valid
+    if (!formData.expiry_date) {
+      errors.push("Expiry date is required.");
+    }
+    
+    // Check if type is provided
+    if (!formData.type.trim()) {
+      errors.push("Product type is required.");
+    }
+    
+    // Check if supplier is provided
+    if (!formData.supplier || !formData.supplier.trim()) {
+      errors.push("Supplier is required.");
+    }
+    
+    // Check if custom category is provided when "custom" is selected
+    if (formData.category_id === "custom" && (!formData.customCategory || !formData.customCategory.trim())) {
+      errors.push("Custom category name is required.");
+    }
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setShowValidationModal(true);
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // Optionally, if the category_id is "custom" include the custom category
+      // Prepare payload according to backend expectations
       const payload = { ...formData };
       
       if (payload.category_id === "custom") {
-        // You may decide to replace the category_id or add a new field.
-        payload.category_id = null;  // or leave it as "custom"
+        // Keep both for backend processing
+        // The backend will create a new category and use its ID
       }
       
       if (editingId) {
@@ -124,20 +222,33 @@ const ManageInventory = () => {
           ...payload,
           product_id: editingId
         });
-        setSuccessMessage("Product updated successfully!");
+        
+        showModal({
+          title: "Success",
+          content: "Product updated successfully!",
+          type: "success"
+        });
       } else {
         await axios.post(`${API_URL}/products.php`, payload);
-        setSuccessMessage("Product added successfully!");
+        
+        showModal({
+          title: "Success",
+          content: "Product added successfully!",
+          type: "success"
+        });
       }
       
       resetForm();
       fetchProducts();
     } catch (err) {
-      setError(err.response?.data?.message || "An error occurred");
+      showModal({
+        title: "Error",
+        content: err.response?.data?.message || err.response?.data?.error || "An error occurred",
+        type: "error"
+      });
       console.error(err);
     } finally {
       setIsLoading(false);
-      setTimeout(() => setSuccessMessage(""), 3000);
     }
   };
 
@@ -146,7 +257,7 @@ const ManageInventory = () => {
     setFormData({
       type: product.type,
       category_id: product.category_id || "",
-      customCategory: product.customCategory || "",
+      customCategory: "", // We don't get this back from the server
       supplier: product.supplier || "",
       weight: product.weight,
       price: product.price,
@@ -156,53 +267,111 @@ const ManageInventory = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        setIsLoading(true);
-        await axios.delete(`${API_URL}/products.php?id=${id}`);
-        fetchProducts();
-        setSuccessMessage("Product deleted successfully!");
-      } catch (err) {
-        setError("Failed to delete product");
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-        setTimeout(() => setSuccessMessage(""), 3000);
-      }
-    }
+    showModal({
+      title: "Confirm Deletion",
+      content: "Are you sure you want to delete this product? This will also remove related sales and stock adjustment records.",
+      type: "warning",
+      actionButtons: [
+        {
+          label: "Cancel",
+          onClick: () => closeModal()
+        },
+        {
+          label: "Delete",
+          type: "danger",
+          onClick: async () => {
+            try {
+              setIsLoading(true);
+              await axios.delete(`${API_URL}/products.php?id=${id}`);
+              fetchProducts();
+              showModal({
+                title: "Success",
+                content: "Product deleted successfully!",
+                type: "success"
+              });
+            } catch (err) {
+              showModal({
+                title: "Error",
+                content: err.response?.data?.error || "Failed to delete product",
+                type: "error"
+              });
+              console.error(err);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    });
   };
 
-  const handleStockAdjustment = async (product, reason) => {
-    const qtyStr = prompt(`Enter quantity (kg) to ${reason} for ${product.type}:`, "1");
-    if (qtyStr === null) return; // User clicked cancel
+  const openStockAdjustmentModal = (product, reason) => {
+    setStockAdjustmentModal({
+      isOpen: true,
+      product,
+      reason,
+      quantity: "1",
+      notes: ""
+    });
+  };
+
+  const handleStockAdjustmentChange = (e) => {
+    const { name, value } = e.target;
     
-    const qty = parseFloat(qtyStr);
-    
-    if (isNaN(qty) || qty <= 0) {
-      alert("Please enter a valid quantity");
+    // Validate quantity is not negative or zero
+    if (name === "quantity" && value !== "" && parseFloat(value) <= 0) {
+      showModal({
+        title: "Validation Error",
+        content: "Quantity must be greater than 0.",
+        type: "error"
+      });
       return;
     }
     
-    const notes = prompt("Add notes (optional):", "");
-    if (notes === null) return; // User clicked cancel
+    setStockAdjustmentModal({
+      ...stockAdjustmentModal,
+      [name]: value
+    });
+  };
+
+  const submitStockAdjustment = async () => {
+    const { product, reason, quantity, notes } = stockAdjustmentModal;
+    
+    // For removal, check if there's enough stock
+    if (reason === "remove" && parseFloat(quantity) > parseFloat(product.weight)) {
+      showModal({
+        title: "Stock Error",
+        content: `Cannot remove ${quantity}kg as the current stock is only ${product.weight}kg.`,
+        type: "error"
+      });
+      return;
+    }
     
     try {
       setIsLoading(true);
       await axios.post(`${API_URL}/stock_adjustments.php`, {
         product_id: product.product_id,
         reason,
-        quantity_change: reason === "add" ? qty : -qty,
+        quantity_change: reason === "add" ? quantity : -quantity,
         notes
       });
       
       fetchProducts();
-      setSuccessMessage(`Stock ${reason === "add" ? "added" : "removed"} successfully!`);
+      showModal({
+        title: "Success",
+        content: `Stock ${reason === "add" ? "added" : "removed"} successfully!`,
+        type: "success"
+      });
+      setStockAdjustmentModal({ ...stockAdjustmentModal, isOpen: false });
     } catch (err) {
-      setError(`Failed to ${reason} stock`);
+      showModal({
+        title: "Error",
+        content: err.response?.data?.error || `Failed to ${reason} stock`,
+        type: "error"
+      });
       console.error(err);
     } finally {
       setIsLoading(false);
-      setTimeout(() => setSuccessMessage(""), 3000);
     }
   };
 
@@ -214,7 +383,7 @@ const ManageInventory = () => {
       supplier: "",
       weight: "",
       price: "",
-      expiry_date: "",
+      expiry_date: getDefaultExpiryDate().toISOString().split('T')[0],
       stock_alert: "10"
     });
     setEditingId(null);
@@ -234,11 +403,28 @@ const ManageInventory = () => {
     setShowExpiryAlert(false);
   };
 
+  // Function to show modal
+  const showModal = (config) => {
+    setModalConfig({
+      isOpen: true,
+      ...config
+    });
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setModalConfig({
+      ...modalConfig,
+      isOpen: false
+    });
+  };
+
   // Function to get days until expiry for a product
   const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return null;
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const expiry = new Date(expiryDate);
     const diffTime = expiry - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -265,6 +451,13 @@ const ManageInventory = () => {
       default:
         return null;
     }
+  };
+
+  // Function to check if a date should be disabled in the datepicker
+  const isDateDisabled = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
   };
 
   return (
@@ -319,7 +512,6 @@ const ManageInventory = () => {
       )}
       
       {error && <div className="error-message">{error}</div>}
-      {successMessage && <div className="success-message">{successMessage}</div>}
       
       <form onSubmit={handleSubmit} className="inventory-form">
         <div className="form-row">
@@ -387,6 +579,7 @@ const ManageInventory = () => {
               id="weight"
               name="weight"
               step="0.01"
+              min="0.01"
               placeholder="Weight (kg)"
               value={formData.weight}
               onChange={handleChange}
@@ -403,6 +596,7 @@ const ManageInventory = () => {
               id="price"
               name="price"
               step="0.01"
+              min="0.01"
               placeholder="Price (PHP/kg)"
               value={formData.price}
               onChange={handleChange}
@@ -412,12 +606,16 @@ const ManageInventory = () => {
           
           <div className="form-group">
             <label htmlFor="expiry_date">Expiry Date</label>
-            <input
-              type="date"
+            <DatePicker
               id="expiry_date"
-              name="expiry_date"
-              value={formData.expiry_date}
-              onChange={handleChange}
+              selected={formData.expiry_date ? new Date(formData.expiry_date) : getDefaultExpiryDate()}
+              onChange={handleDateChange}
+              minDate={new Date()}
+              filterDate={date => !isDateDisabled(date)}
+              dateFormat="yyyy-MM-dd"
+              className="form-control"
+              placeholderText="Select expiry date"
+              required
             />
           </div>
         </div>
@@ -430,6 +628,7 @@ const ManageInventory = () => {
               id="stock_alert"
               name="stock_alert"
               step="0.01"
+              min="0.01"
               placeholder="Stock Alert Level"
               value={formData.stock_alert}
               onChange={handleChange}
@@ -475,7 +674,7 @@ const ManageInventory = () => {
               products.map((p) => (
                 <tr key={p.product_id} className={getRowClassName(p)}>
                   <td>{p.type}</td>
-                  <td>{p.category_name || (p.customCategory ? p.customCategory : 'N/A')}</td>
+                  <td>{p.category_name || 'N/A'}</td>
                   <td>{p.supplier || 'N/A'}</td>
                   <td>{p.weight}</td>
                   <td>{p.price}</td>
@@ -500,13 +699,13 @@ const ManageInventory = () => {
                     <div className="stock-actions">
                       <button 
                         className="add-stock-btn" 
-                        onClick={() => handleStockAdjustment(p, "add")}
+                        onClick={() => openStockAdjustmentModal(p, "add")}
                       >
                         + Stock
                       </button>
                       <button 
                         className="remove-stock-btn" 
-                        onClick={() => handleStockAdjustment(p, "remove")}
+                        onClick={() => openStockAdjustmentModal(p, "remove")}
                       >
                         - Stock
                       </button>
@@ -518,6 +717,89 @@ const ManageInventory = () => {
           </tbody>
         </table>
       </div>
+      
+      {/* Generic Modal */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        type={modalConfig.type}
+        actionButtons={modalConfig.actionButtons}
+      >
+        <p>{modalConfig.content}</p>
+      </Modal>
+      
+      {/* Validation Error Modal */}
+      <Modal
+        isOpen={showValidationModal}
+        onClose={() => setShowValidationModal(false)}
+        title="Validation Errors"
+        type="error"
+        actionButtons={[
+          {
+            label: "Close",
+            onClick: () => setShowValidationModal(false)
+          }
+        ]}
+      >
+        <div>
+          <p>Please correct the following errors:</p>
+          <ul>
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      </Modal>
+      
+      {/* Stock Adjustment Modal */}
+      <Modal
+        isOpen={stockAdjustmentModal.isOpen}
+        onClose={() => setStockAdjustmentModal({...stockAdjustmentModal, isOpen: false})}
+        title={`${stockAdjustmentModal.reason === "add" ? "Add to" : "Remove from"} Stock`}
+        type="info"
+        actionButtons={[
+          {
+            label: "Cancel",
+            type: "secondary",
+            onClick: () => setStockAdjustmentModal({...stockAdjustmentModal, isOpen: false})
+          },
+          {
+            label: "Submit",
+            type: "primary",
+            onClick: submitStockAdjustment
+          }
+        ]}
+      >
+        <div className="stock-adjustment-form">
+          <p>Product: {stockAdjustmentModal.product?.type}</p>
+          <p>Current Stock: {stockAdjustmentModal.product?.weight} kg</p>
+          
+          <div className="form-group">
+            <label htmlFor="quantity">Quantity (kg):</label>
+            <input
+              type="number"
+              id="quantity"
+              name="quantity"
+              min="0.01"
+              step="0.01"
+              value={stockAdjustmentModal.quantity}
+              onChange={handleStockAdjustmentChange}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="notes">Notes (optional):</label>
+            <textarea
+              id="notes"
+              name="notes"
+              value={stockAdjustmentModal.notes}
+              onChange={handleStockAdjustmentChange}
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
