@@ -85,7 +85,7 @@ body {
 }
 
 .product-search input {
-  width: 100%;
+  width: 90%;
   padding: 12px 15px;
   border-radius: var(--radius);
   border: 1px solid var(--border-color);

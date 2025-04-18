@@ -477,9 +477,10 @@ const Reports = () => {
   );
 };
 
-// Helper function for currency formatting
+
+// Helper function for currency formatting - updated to Philippine Peso
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 };
 
 // Sales Report Component

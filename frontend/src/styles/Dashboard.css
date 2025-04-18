@@ -1,87 +1,72 @@
-/* Dashboard.css - Modern Light Blue & White Theme */
-:root {
-  --primary-blue: #2389da;
-  --light-blue: #e6f3ff;
-  --lighter-blue: #f2f9ff;
-  --accent-blue: #0069c0;
-  --critical: #f44336;
-  --warning: #ff9800;
-  --success: #4caf50;
-  --text-dark: #2c3e50;
-  --text-light: #546e7a;
-  --white: #ffffff;
-  --border-radius: 12px;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  --transition: all 0.3s ease;
-}
+/* Dashboard.css - Modern UI/UX with light blue and white color scheme */
 
+/* Dashboard container */
 .dashboard {
-  padding: 24px;
-  background-color: var(--lighter-blue);
+  padding: 20px;
+  background-color: #f8fafc;
   min-height: 100vh;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Dashboard title */
 .dashboard-title {
-  color: var(--text-dark);
+  color: #0063cc;
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 24px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #e1e9f1;
 }
 
-/* Stats Cards */
+/* Stats section */
 .dashboard-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
   margin-bottom: 24px;
 }
 
+/* Stat card styling */
 .stat-card {
-  background-color: var(--white);
-  border-radius: var(--border-radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  border-top: 4px solid var(--primary-blue);
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 99, 204, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(0, 99, 204, 0.12);
 }
 
+/* Alert card */
 .stat-card.alert {
-  border-top-color: var(--warning);
+  border-left: 4px solid #ff4d4d;
 }
 
+/* Stat content */
 .stat-content h3 {
-  color: var(--text-light);
+  color: #4a5568;
   font-size: 14px;
   font-weight: 500;
-  margin: 0 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0 0 10px 0;
 }
 
 .stat-value {
-  color: var(--text-dark);
-  font-size: 28px;
-  font-weight: 700;
+  color: #0063cc;
+  font-size: 24px;
+  font-weight: bold;
   margin: 0;
-  line-height: 1.2;
 }
 
 .stat-subvalue {
-  color: var(--primary-blue);
-  font-size: 16px;
-  font-weight: 600;
+  color: #4a5568;
+  font-size: 14px;
   margin: 4px 0 0 0;
 }
 
-/* Charts */
+/* Charts section */
 .dashboard-charts {
   display: grid;
   grid-template-columns: 1fr;
@@ -89,114 +74,116 @@
   margin-bottom: 24px;
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
   .dashboard-charts {
     grid-template-columns: 3fr 2fr;
   }
 }
 
+/* Chart containers */
 .chart-container {
-  background-color: var(--white);
-  border-radius: var(--border-radius);
+  background-color: white;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 12px rgba(0, 99, 204, 0.08);
 }
 
 .chart-container h3 {
-  color: var(--text-dark);
-  font-size: 18px;
+  color: #0063cc;
+  font-size: 16px;
   font-weight: 600;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--light-blue);
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e9f1;
 }
 
-/* Tables */
+/* Low stock table */
 .dashboard-tables {
   margin-bottom: 24px;
 }
 
 .table-container {
-  background-color: var(--white);
-  border-radius: var(--border-radius);
+  background-color: white;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 12px rgba(0, 99, 204, 0.08);
   overflow-x: auto;
 }
 
 .table-container h3 {
-  color: var(--text-dark);
-  font-size: 18px;
+  color: #0063cc;
+  font-size: 16px;
   font-weight: 600;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--light-blue);
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e9f1;
 }
 
+/* Table styling */
 table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
 
-table th {
-  background-color: var(--light-blue);
-  color: var(--text-dark);
-  font-weight: 600;
+th {
   text-align: left;
   padding: 12px 16px;
+  background-color: #f1f7fd;
+  color: #0063cc;
+  font-weight: 600;
   font-size: 14px;
 }
 
-table th:first-child {
-  border-top-left-radius: 8px;
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e1e9f1;
+  color: #4a5568;
+  font-size: 14px;
 }
 
-table th:last-child {
-  border-top-right-radius: 8px;
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--light-blue);
-  color: var(--text-dark);
+tbody tr:hover {
+  background-color: #f5faff;
 }
 
-/* Status Badges */
+/* Status badges */
 .status-badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 100px;
+  padding: 4px 10px;
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-badge.critical {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: var(--critical);
+  font-weight: 500;
 }
 
 .status-badge.warning {
-  background-color: rgba(255, 152, 0, 0.1);
-  color: var(--warning);
+  background-color: #fff3cd;
+  color: #856404;
 }
 
-/* Loading State */
+.status-badge.critical {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Loading spinner */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  min-height: 300px;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--light-blue);
-  border-top: 4px solid var(--primary-blue);
+  border: 4px solid #e1e9f1;
+  border-top: 4px solid #0063cc;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -207,43 +194,21 @@ table td {
   100% { transform: rotate(360deg); }
 }
 
-/* Error State */
+/* Error message */
 .error-message {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: var(--critical);
-  padding: 16px;
-  border-radius: var(--border-radius);
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 8px;
   margin-bottom: 24px;
-  font-weight: 500;
 }
 
-/* No Data Message */
+/* No data message */
 .no-data-message {
-  padding: 32px;
-  text-align: center;
-  color: var(--text-light);
-}
-
-/* Chart specific customizations */
-.recharts-default-tooltip {
-  background-color: var(--white) !important;
-  border: none !important;
-  box-shadow: var(--shadow) !important;
-  border-radius: 8px !important;
-  padding: 12px !important;
-}
-
-.recharts-tooltip-label {
-  color: var(--text-dark) !important;
-  font-weight: 600 !important;
-  margin-bottom: 4px !important;
-}
-
-.recharts-tooltip-item {
-  color: var(--text-light) !important;
-}
-
-/* Make charts responsive */
-.recharts-responsive-container {
-  width: 100% !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #718096;
+  font-style: italic;
 }
