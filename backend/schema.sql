@@ -24,13 +24,12 @@ CREATE TABLE products (
 CREATE TABLE sales (
     sale_id INT AUTO_INCREMENT PRIMARY KEY,
     receipt_no VARCHAR(50) NOT NULL,        -- Receipt number like RCP-timestamp
-    subtotal DECIMAL(10,2) NOT NULL,        -- Before discount
-    discount_percent DECIMAL(5,2),          -- Discount percentage
-    discount_amount DECIMAL(10,2),          -- Calculated discount amount
     total_amount DECIMAL(10,2) NOT NULL,    -- Final amount after discount
     amount_paid DECIMAL(10,2) NOT NULL,     -- Amount customer paid
-    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- When sale occurred
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- When sale occurred 
+    
 );
+      
 
 -- Sale Items Table - Items within each sale
 CREATE TABLE sale_items (
@@ -48,8 +47,8 @@ CREATE TABLE stock_adjustments (
     adjustment_id INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
     quantity_change DECIMAL(10,2) NOT NULL, -- Positive for adding, negative for removing
-    reason VARCHAR(20) NOT NULL,            -- 'add' or 'remove'
-    notes TEXT,                             -- Optional notes about adjustment
+    reason VARCHAR(20) NOT NULL,
+    notes TEXT,
     adjustment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );

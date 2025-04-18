@@ -3,12 +3,14 @@ import { NavLink, useNavigate } from "react-router-dom";
 import HeaderLogo from "./HeaderLogo";
 import "../styles/Sidebar.css";
 
-const Sidebar = () => {
+const Sidebar = ({ onLogout }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    // Call the logout function from props
+    onLogout();
+    // Then navigate to login
     navigate("/login");
-    window.location.reload();
   };
 
   return (
@@ -48,9 +50,6 @@ const Sidebar = () => {
               Reports
             </NavLink>
           </li>
-         
-          
-         
         </ul>
       </nav>
       <button className="logout-button" onClick={handleLogout}>

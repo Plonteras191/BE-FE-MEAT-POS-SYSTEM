@@ -1,231 +1,365 @@
-/* ManageInventory.css */
+/* Global Variables */
 :root {
   --primary: #3498db;
   --primary-light: #5dade2;
   --primary-dark: #2980b9;
-  --accent: #1abc9c;
-  --danger: #e74c3c;
-  --warning: #f39c12;
   --success: #2ecc71;
-  --text-dark: #2c3e50;
-  --text-light: #ecf0f1;
-  --background: #f9f9f9;
-  --card-bg: #ffffff;
-  --border: #e0e0e0;
-  --shadow: rgba(0, 0, 0, 0.1);
-  --hover-shadow: rgba(0, 0, 0, 0.2);
-  --table-header-bg: #ebf5fb;
-  --table-stripe: #f5f9fc;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --info: #3498db;
+  --light: #f8f9fa;
+  --dark: #343a40;
+  --border: #dee2e6;
+  --text: #333;
+  --text-light: #6c757d;
+  --background: #ecf0f1;
+  --white: #ffffff;
+  --shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  --border-radius: 6px;
+  --transition: all 0.3s ease;
 }
 
-.manage-inventory {
+/* Global Styles */
+body {
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--background);
-  color: var(--text-dark);
-  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  padding: 1.5rem;
-  border-radius: 8px;
-  max-width: 1200px;
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1280px;
   margin: 0 auto;
+  padding: 20px;
 }
 
-.manage-inventory h2 {
-  color: var(--primary-dark);
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-  border-bottom: 2px solid var(--primary-light);
-  padding-bottom: 0.75rem;
-}
-
-.manage-inventory h3 {
-  color: var(--primary-dark);
-  font-size: 1.4rem;
-  margin: 1.5rem 0;
-  font-weight: 500;
-}
-
-/* Form Styles */
-.inventory-form {
-  background-color: var(--card-bg);
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--shadow);
-  margin-bottom: 2rem;
-}
-
-.form-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
   margin-bottom: 1rem;
-}
-
-.form-group {
-  flex: 1;
-  min-width: 250px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--text-dark);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea,
-.react-datepicker__input-container input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus,
-.react-datepicker__input-container input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
   font-weight: 600;
+  line-height: 1.2;
+  color: var(--dark);
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: var(--primary-dark);
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 10px;
+  display: inline-block;
+}
+
+h3 {
+  font-size: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+/* Manage Inventory */
+.manage-inventory {
+  margin-bottom: 3rem;
+}
+
+/* Action Controls */
+.action-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  gap: 15px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Buttons */
+button {
   cursor: pointer;
-  transition: background-color 0.3s, transform 0.1s;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
 }
 
 button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 button:active {
   transform: translateY(0);
 }
 
-.form-actions button[type="submit"] {
+.add-product-btn {
   background-color: var(--primary);
-  color: white;
+  color: var(--white);
+  padding: 10px 18px;
+  font-weight: 600;
 }
 
-.form-actions button[type="submit"]:hover {
+.add-product-btn:hover {
   background-color: var(--primary-dark);
 }
 
-.cancel-btn {
-  background-color: #95a5a6;
-  color: white;
+.edit-btn {
+  background-color: var(--primary);
+  color: var(--white);
 }
 
-.cancel-btn:hover {
-  background-color: #7f8c8d;
+.delete-btn {
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.add-stock-btn {
+  background-color: var(--success);
+  color: var(--white);
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.remove-stock-btn {
+  background-color: var(--warning);
+  color: var(--white);
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0;
+  min-width: auto;
+}
+
+.close-btn:hover {
+  color: var(--text);
+  transform: none;
+  box-shadow: none;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.primary-btn {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.primary-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.secondary-btn {
+  background-color: var(--light);
+  color: var(--dark);
+  border: 1px solid var(--border);
+}
+
+.secondary-btn:hover {
+  background-color: var(--border);
+}
+
+.danger-btn {
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.danger-btn:hover {
+  background-color: #c0392b;
+}
+
+/* Form Styles */
+.inventory-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-text {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-top: 5px;
+}
+
+.disabled-input {
+  background-color: var(--light);
+  cursor: not-allowed;
 }
 
 /* Table Styles */
 .table-container {
-  background-color: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--shadow);
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
   overflow: hidden;
-  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.table-container h3 {
+  padding: 15px 20px;
+  margin: 0;
+  background-color: var(--primary-light);
+  color: var(--white);
+  font-weight: 500;
 }
 
 .inventory-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+}
+
+.inventory-table th,
+.inventory-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
 }
 
 .inventory-table th {
-  background-color: var(--table-header-bg);
-  color: var(--primary-dark);
+  background-color: #f1f8fe;
   font-weight: 600;
-  text-align: left;
-  padding: 1rem;
-  border-bottom: 2px solid var(--primary-light);
+  color: var(--primary-dark);
 }
 
-.inventory-table tr:nth-child(even) {
-  background-color: var(--table-stripe);
+.inventory-table tr:last-child td {
+  border-bottom: none;
 }
 
-.inventory-table td {
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+.inventory-table tr:hover {
+  background-color: rgba(236, 240, 241, 0.5);
 }
 
 .no-data {
   text-align: center;
-  padding: 2rem !important;
-  color: #7f8c8d;
+  padding: 30px;
+  color: var(--text-light);
   font-style: italic;
 }
 
-/* Status and Alert Styles */
-.expired {
-  background-color: rgba(231, 76, 60, 0.1) !important;
-}
-
-.near-expiry {
-  background-color: rgba(243, 156, 18, 0.1) !important;
-}
-
-.low-stock {
-  background-color: rgba(241, 196, 15, 0.1) !important;
-}
-
+/* Status Badges */
 .status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
+  padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
 }
 
 .expired-badge {
-  background-color: var(--danger);
-  color: white;
+  background-color: rgba(231, 76, 60, 0.15);
+  color: var(--danger);
 }
 
 .expiring-badge {
-  background-color: var(--warning);
-  color: white;
+  background-color: rgba(243, 156, 18, 0.15);
+  color: var(--warning);
+}
+
+/* Row Status Colors */
+.expired {
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+.near-expiry {
+  background-color: rgba(243, 156, 18, 0.05);
+}
+
+.low-stock {
+  background-color: rgba(52, 152, 219, 0.05);
 }
 
 /* Alert Notifications */
 .stock-alert-container,
 .expiry-alert-container {
-  margin-bottom: 1.5rem;
+  margin-bottom: 20px;
 }
 
 .stock-alert,
 .expiry-alert {
-  background-color: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--shadow);
+  border-radius: var(--border-radius);
   overflow: hidden;
-}
-
-.stock-alert {
-  border-left: 4px solid var(--warning);
-}
-
-.expiry-alert {
-  border-left: 4px solid var(--danger);
+  box-shadow: var(--shadow);
 }
 
 .stock-alert-header,
@@ -233,117 +367,54 @@ button:active {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 10px 15px;
 }
 
 .stock-alert-header {
-  background-color: rgba(243, 156, 18, 0.1);
+  background-color: rgba(52, 152, 219, 0.9);
+  color: var(--white);
 }
 
 .expiry-alert-header {
-  background-color: rgba(231, 76, 60, 0.1);
+  background-color: rgba(243, 156, 18, 0.9);
+  color: var(--white);
 }
 
 .stock-alert-header h3,
 .expiry-alert-header h3 {
   margin: 0;
   font-size: 1.1rem;
-}
-
-.stock-alert-header h3 {
-  color: var(--warning);
-}
-
-.expiry-alert-header h3 {
-  color: var(--danger);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-dark);
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.3s;
-}
-
-.close-btn:hover {
-  color: var(--danger);
+  color: var(--white);
 }
 
 .stock-alert-content,
 .expiry-alert-content {
-  padding: 1rem;
+  background-color: var(--white);
+  padding: 15px;
 }
 
 .stock-alert-content ul,
 .expiry-alert-content ul {
-  margin: 0.5rem 0 0 0;
-  padding-left: 1.5rem;
+  margin: 10px 0 0 0;
+  padding-left: 20px;
 }
 
 .stock-alert-content li,
 .expiry-alert-content li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 5px;
 }
 
-/* Action Buttons */
+/* Action Buttons in table */
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.edit-btn {
-  background-color: var(--primary-light);
-  color: white;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.delete-btn {
-  background-color: var(--danger);
-  color: white;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
+  gap: 5px;
 }
 
 .stock-actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  width: 100%;
-}
-
-.add-stock-btn {
-  background-color: var(--success);
-  color: white;
-  flex: 1;
-  padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
-}
-
-.remove-stock-btn {
-  background-color: var(--warning);
-  color: white;
-  flex: 1;
-  padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
-}
-
-/* Error Messages */
-.error-message {
-  background-color: rgba(231, 76, 60, 0.1);
-  color: var(--danger);
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
+  gap: 5px;
+  margin-top: 5px;
 }
 
 /* Modal Styles */
@@ -358,229 +429,28 @@ button:active {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(3px);
+  padding: 15px;
 }
 
 .modal-container {
-  background-color: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: modal-appear 0.3s ease;
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-}
-
-.modal-type-info .modal-header {
-  color: var(--primary);
-  border-bottom-color: var(--primary-light);
-}
-
-.modal-type-success .modal-header {
-  color: var(--success);
-  border-bottom-color: var(--success);
-}
-
-.modal-type-warning .modal-header {
-  color: var(--warning);
-  border-bottom-color: var(--warning);
-}
-
-.modal-type-error .modal-header {
-  color: var(--danger);
-  border-bottom-color: var(--danger);
-}
-
-.modal-content {
-  padding: 1.5rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.btn-primary {
-  background-color: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-dark);
-}
-
-.btn-secondary {
-  background-color: #95a5a6;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #7f8c8d;
-}
-
-.btn-success {
-  background-color: var(--success);
-  color: white;
-}
-
-.btn-success:hover {
-  background-color: #27ae60;
-}
-
-.btn-warning {
-  background-color: var(--warning);
-  color: white;
-}
-
-.btn-warning:hover {
-  background-color: #e67e22;
-}
-
-.btn-danger {
-  background-color: var(--danger);
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #c0392b;
-}
-
-/* Stock Adjustment Form in Modal */
-.stock-adjustment-form p {
-  margin-bottom: 1rem;
-}
-
-.stock-adjustment-form .form-group {
-  margin-bottom: 1rem;
-}
-
-.stock-adjustment-form textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .form-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .form-group {
-    min-width: 100%;
-  }
-  
-  .inventory-table {
-    font-size: 0.85rem;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-  }
-  
-  .stock-actions {
-    flex-direction: row;
-  }
-}
-
-/* DatePicker customization */
-.react-datepicker-wrapper {
+  background-color: var(--white);
+  border-radius: var(--border-radius);
   width: 100%;
-}
-
-.react-datepicker {
-  font-family: 'Segoe UI', Roboto, sans-serif !important;
-  border-color: var(--border) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 16px var(--shadow) !important;
-}
-
-.react-datepicker__header {
-  background-color: var(--primary-light) !important;
-  border-bottom: none !important;
-  border-top-left-radius: 8px !important;
-  border-top-right-radius: 8px !important;
-  padding-top: 12px !important;
-}
-
-.react-datepicker__day-name, 
-.react-datepicker__current-month {
-  color: var(--text-light) !important;
-}
-
-.react-datepicker__day--selected {
-  background-color: var(--primary) !important;
-}
-
-.react-datepicker__day:hover {
-  background-color: var(--primary-light) !important;
-  color: white !important;
-}
-
-/* Modal Animation Improvements */
-/* Modal Styles - Update */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(3px);
-}
-
-.modal-container {
-  background-color: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  animation: modal-appear 0.3s ease;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
 }
 
-@keyframes modal-appear {
+@keyframes slideIn {
   from {
-    opacity: 0;
     transform: translateY(-20px);
+    opacity: 0;
   }
   to {
-    opacity: 1;
     transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -588,120 +458,142 @@ button:active {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.5rem;
+  padding: 15px 20px;
   border-bottom: 1px solid var(--border);
 }
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-}
-
-/* Modal type styles */
 .info-modal .modal-header {
-  color: var(--primary);
-  border-bottom-color: var(--primary-light);
+  background-color: var(--primary);
+  color: var(--white);
 }
 
 .success-modal .modal-header {
-  color: var(--success);
-  border-bottom-color: var(--success);
+  background-color: var(--success);
+  color: var(--white);
 }
 
 .warning-modal .modal-header {
-  color: var(--warning);
-  border-bottom-color: var(--warning);
+  background-color: var(--warning);
+  color: var(--white);
 }
 
 .error-modal .modal-header {
-  color: var(--danger);
-  border-bottom-color: var(--danger);
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: inherit;
+  font-size: 1.2rem;
 }
 
 .modal-content {
-  padding: 1.5rem;
+  padding: 20px;
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
+  gap: 10px;
+  padding: 15px 20px;
   border-top: 1px solid var(--border);
+  background-color: #f8f9fa;
 }
 
-/* Modal button styles */
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* DatePicker Custom Styles */
+.react-datepicker-wrapper {
+  width: 100%;
 }
 
-.primary-btn {
-  background-color: var(--primary);
-  color: white;
+.react-datepicker__input-container input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
 }
 
-.primary-btn:hover {
-  background-color: var(--primary-dark);
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .action-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filter-controls {
+    margin-top: 10px;
+    width: 100%;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .filter-group select {
+    width: 100%;
+  }
 }
 
-.secondary-btn {
-  background-color: #95a5a6;
-  color: white;
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .inventory-table {
+    min-width: 800px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
 }
 
-.secondary-btn:hover {
-  background-color: #7f8c8d;
+@media (max-width: 576px) {
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .action-buttons button {
+    width: 100%;
+  }
+  
+  .filter-controls {
+    flex-direction: column;
+  }
+  
+  .modal-container {
+    width: 95%;
+  }
 }
 
-.success-btn {
-  background-color: var(--success);
-  color: white;
-}
-
-.success-btn:hover {
-  background-color: #27ae60;
-}
-
-.warning-btn {
-  background-color: var(--warning);
-  color: white;
-}
-
-.warning-btn:hover {
-  background-color: #e67e22;
-}
-
-.danger-btn {
-  background-color: var(--danger);
-  color: white;
-}
-
-.danger-btn:hover {
-  background-color: #c0392b;
-}
-
-/* Close button in header */
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-dark);
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.3s;
-}
-
-.close-btn:hover {
+/* Error Message */
+.error-message {
+  background-color: rgba(231, 76, 60, 0.1);
   color: var(--danger);
+  padding: 10px 15px;
+  border-radius: var(--border-radius);
+  margin-bottom: 15px;
+  border-left: 4px solid var(--danger);
+}
+
+/* Stock Adjustment Form */
+.stock-adjustment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.stock-adjustment-form p {
+  margin: 0 0 5px 0;
+}
+
+/* React DatePicker Overrides */
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
 }

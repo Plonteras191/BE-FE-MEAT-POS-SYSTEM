@@ -77,14 +77,11 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         $receipt_no = $conn->real_escape_string($data['receipt_no']);
-        $subtotal = $conn->real_escape_string($data['subtotal']);
-        $discount_percent = isset($data['discount_percent']) ? $conn->real_escape_string($data['discount_percent']) : "0.00";
-        $discount_amount = isset($data['discount_amount']) ? $conn->real_escape_string($data['discount_amount']) : "0.00";
         $total_amount = $conn->real_escape_string($data['total_amount']);
         $amount_paid = $conn->real_escape_string($data['amount_paid']);
         
-        $sql = "INSERT INTO sales (receipt_no, subtotal, discount_percent, discount_amount, total_amount, amount_paid) 
-                VALUES ('$receipt_no', '$subtotal', '$discount_percent', '$discount_amount', '$total_amount', '$amount_paid')";
+        $sql = "INSERT INTO sales (receipt_no, total_amount, amount_paid) 
+                VALUES ('$receipt_no', '$total_amount', '$amount_paid')";
         
         if (!$conn->query($sql)) {
             throw new Exception("Failed to create sale: " . $conn->error);
