@@ -13,7 +13,6 @@ import { CSVLink } from "react-csv";
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("sales");
   const [reportData, setReportData] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeDateFilter, setActiveDateFilter] = useState("today");
   const [showSaleDetail, setShowSaleDetail] = useState(false);
@@ -84,7 +83,6 @@ const Reports = () => {
   };
 
   const fetchReport = async (reportType, dateFilter = activeDateFilter) => {
-    setLoading(true);
     setError(null);
   
     try {
@@ -134,8 +132,6 @@ const Reports = () => {
       console.error(`Error fetching ${reportType} report:`, err);
       setError(`Failed to load ${reportType} report. Please try again.`);
       setReportData(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -216,7 +212,6 @@ const Reports = () => {
 
   // Dynamic component rendering based on report type
   const renderReportContent = () => {
-    if (loading) return <div className="loading-spinner">Loading...</div>;
     if (error) return <div className="error-message">{error}</div>;
     if (!reportData) return <div className="no-data-message">No data available</div>;
   
