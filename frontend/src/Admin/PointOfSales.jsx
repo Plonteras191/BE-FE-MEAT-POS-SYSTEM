@@ -307,16 +307,16 @@ const PointOfSales = () => {
     parseFloat(product.weight) > 0
   );
 
-  // Helper function to check if product can be sold
+  // Updated: Helper function to check if product can be sold
+  // Now only expired products are disabled
   const canProductBeSold = (product) => {
-    return parseFloat(product.weight) > 0 && product.status === 'fresh';
+    return parseFloat(product.weight) > 0 && product.status !== 'expired';
   };
 
   // Helper function to get status message
   const getStatusMessage = (product) => {
     if (parseFloat(product.weight) <= 0) return "Out of stock";
     if (product.status === 'expired') return "Expired";
-    if (product.status === 'expiring') return "Expiring soon";
     return "";
   };
 

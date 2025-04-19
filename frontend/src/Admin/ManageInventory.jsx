@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../styles/ManageInventory.css";
 import Modal from "../components/Modal"; // Import the reusable modal component
 import { productsApi, categoriesApi, stockAdjustmentsApi } from "../services/api"; // Import API services
+import { addDays, format, parseISO } from "date-fns"; // Import date-fns
 
 const ManageInventory = () => {
   const [products, setProducts] = useState([]);
@@ -56,11 +57,9 @@ const ManageInventory = () => {
   // Constants for expiry date warnings (in days)
   const EXPIRY_WARNING_DAYS = 7; // Products expiring within 7 days
   
-  // Default expiration date (30 days from now)
+  // Default expiration date (2 days from now)
   const getDefaultExpiryDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    return date;
+    return addDays(new Date(), 2);
   };
 
   useEffect(() => {
@@ -176,7 +175,7 @@ const ManageInventory = () => {
 
   // Date change handler
   const handleDateChange = (date) => {
-    setFormData({ ...formData, expiry_date: date ? date.toISOString().split('T')[0] : "" });
+    setFormData({ ...formData, expiry_date: date ? format(date, 'yyyy-MM-dd') : "" });
   };
 
   const validateForm = () => {
@@ -239,12 +238,13 @@ const ManageInventory = () => {
       const payload = { ...formData };
       
       if (editingId) {
-        // When editing, don't include weight in the payload
-        // as it's managed separately via stock adjustments
-        const { weight, ...editPayload } = payload;
+        // When editing, include the current weight in the payload
+        // Find the current product to get its weight
+        const currentProduct = products.find(p => p.product_id === editingId);
+        payload.weight = currentProduct ? currentProduct.weight : "0.00";
         
         await productsApi.update({
-          ...editPayload,
+          ...payload,
           product_id: editingId
         });
         
@@ -281,10 +281,10 @@ const ManageInventory = () => {
   const openAddProductForm = () => {
     resetForm();
     setEditingId(null);
-    // Set default expiry date
+    // Set default expiry date to 2 days from now
     setFormData(prev => ({
       ...prev,
-      expiry_date: getDefaultExpiryDate().toISOString().split('T')[0]
+      expiry_date: format(getDefaultExpiryDate(), 'yyyy-MM-dd')
     }));
     setShowProductForm(true);
   };
@@ -296,7 +296,7 @@ const ManageInventory = () => {
       category_id: product.category_id || "",
       customCategory: "", // We don't get this back from the server
       supplier: product.supplier || "",
-      weight: product.weight, // Still store the weight in form data for reference
+      weight: product.weight, // Store the weight for reference, even though it's disabled in form
       price: product.price,
       expiry_date: product.expiry_date || "",
       stock_alert: product.stock_alert || "10"
@@ -425,7 +425,7 @@ const ManageInventory = () => {
       supplier: "",
       weight: "",
       price: "",
-      expiry_date: getDefaultExpiryDate().toISOString().split('T')[0],
+      expiry_date: format(getDefaultExpiryDate(), 'yyyy-MM-dd'),
       stock_alert: "10"
     });
     setEditingId(null);
@@ -433,8 +433,12 @@ const ManageInventory = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    try {
+      return format(parseISO(dateString), 'yyyy-MM-dd');
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return dateString;
+    }
   };
 
   const closeStockAlert = () => {
@@ -465,13 +469,18 @@ const ManageInventory = () => {
   const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return null;
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiry = parseISO(expiryDate);
+      const diffTime = expiry - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays;
+    } catch (e) {
+      console.error("Error calculating days until expiry:", e);
+      return null;
+    }
   };
 
   // Function to get row class based on product status and stock level
@@ -782,7 +791,7 @@ const ManageInventory = () => {
               <label htmlFor="expiry_date">Expiry Date</label>
               <DatePicker
                 id="expiry_date"
-                selected={formData.expiry_date ? new Date(formData.expiry_date) : getDefaultExpiryDate()}
+                selected={formData.expiry_date ? parseISO(formData.expiry_date) : getDefaultExpiryDate()}
                 onChange={handleDateChange}
                 minDate={new Date()}
                 filterDate={date => !isDateDisabled(date)}
