@@ -274,7 +274,7 @@ function getSalesReport($conn) {
     echo json_encode($report);
 }
 
-// Inventory report function
+// Updated Inventory report function
 function getInventoryReport($conn) {
     // Get inventory summary
     $summarySql = "SELECT 
@@ -286,18 +286,22 @@ function getInventoryReport($conn) {
     $summaryResult = $conn->query($summarySql);
     $summary = $summaryResult ? $summaryResult->fetch_assoc() : null;
     
-    // Get detailed inventory information
+    // Get detailed inventory information with proper field names
     $productsSql = "SELECT 
                     p.product_id,
                     p.type,
                     c.category_name,
                     p.supplier,
-                    p.weight AS current_stock,  -- Changed to SQL comment format
+                    p.weight AS current_stock,
                     p.price,
                     p.expiry_date,
                     p.stock_alert,
                     (p.weight * p.price) AS inventory_value,
-                    p.status
+                    CASE 
+                        WHEN p.expiry_date IS NOT NULL AND p.expiry_date < CURDATE() THEN 'Expired'
+                        WHEN p.weight <= p.stock_alert THEN 'Low Stock'
+                        ELSE 'In Stock' 
+                    END AS status
                  FROM products p
                  LEFT JOIN categories c ON p.category_id = c.category_id
                  ORDER BY p.type ASC";
@@ -309,6 +313,9 @@ function getInventoryReport($conn) {
         while ($row = $productsResult->fetch_assoc()) {
             $products[] = $row;
         }
+    } else {
+        // Log error for debugging
+        error_log("Error in inventory query: " . $conn->error);
     }
     
     // Combine all report data

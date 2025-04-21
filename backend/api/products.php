@@ -3,36 +3,20 @@
 
 require_once 'db_connection.php';
 
-// Function to determine product status based on expiry date
-function determineProductStatus($expiryDate) {
-    if (empty($expiryDate)) {
-        return 'fresh';
-    }
-    
-    $today = date('Y-m-d');
-    $warningDate = date('Y-m-d', strtotime('+7 days'));
-    
-    if ($expiryDate <= $today) {
-        return 'expired';
-    } else if ($expiryDate <= $warningDate) {
-        return 'expiring';
-    } else {
-        return 'fresh';
-    }
-}
-
 // Get all products or a specific product
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['id'])) {
         $productId = $conn->real_escape_string($_GET['id']);
-        $sql = "SELECT p.*, c.category_name 
+        $sql = "SELECT p.*, c.category_name, ps.status 
                 FROM products p 
                 LEFT JOIN categories c ON p.category_id = c.category_id 
+                LEFT JOIN product_status ps ON p.product_id = ps.product_id
                 WHERE p.product_id = $productId";
     } else {
-        $sql = "SELECT p.*, c.category_name 
+        $sql = "SELECT p.*, c.category_name, ps.status 
                 FROM products p 
                 LEFT JOIN categories c ON p.category_id = c.category_id
+                LEFT JOIN product_status ps ON p.product_id = ps.product_id
                 ORDER BY p.type";
     }
     
@@ -93,15 +77,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
-    // Determine status based on expiry date
-    $status = 'fresh';
-    if (!empty($data['expiry_date'])) {
-        $status = determineProductStatus($data['expiry_date']);
-    }
-    $status = $conn->real_escape_string($status);
-    
-    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert, status) 
-            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert', '$status')";
+    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert) 
+            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert')";
     
     if ($conn->query($sql)) {
         $product_id = $conn->insert_id;
@@ -157,13 +134,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
-    // Determine status based on expiry date
-    $status = 'fresh';
-    if (!empty($data['expiry_date'])) {
-        $status = determineProductStatus($data['expiry_date']);
-    }
-    $status = $conn->real_escape_string($status);
-    
     $sql = "UPDATE products 
             SET type = '$type', 
                 category_id = $category_id, 
@@ -171,8 +141,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 weight = '$weight', 
                 price = '$price', 
                 expiry_date = $expiry_date, 
-                stock_alert = '$stock_alert',
-                status = '$status'
+                stock_alert = '$stock_alert'
             WHERE product_id = $product_id";
     
     if ($conn->query($sql)) {
@@ -221,50 +190,54 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     }
 }
 
-// Update all products' status based on expiry dates
+// Update product statuses - NEW PATCH METHOD
+// Update product statuses - NEW PATCH METHOD
 else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_GET['action'] === 'update_status') {
-    $conn->begin_transaction();
+    // Since product_status is a VIEW and not a physical table, we don't need to update it manually
+    // The view will automatically reflect the current status based on expiry dates
     
-    try {
-        // Get all products with expiry dates
-        $sql = "SELECT product_id, expiry_date FROM products WHERE expiry_date IS NOT NULL";
-        $result = $conn->query($sql);
-        
-        if (!$result) {
-            throw new Exception("Failed to fetch products: " . $conn->error);
+    // We can optionally update the product expiry dates if needed
+    // But that's not needed here since statuses are calculated from existing expiry dates
+    
+    // Return success message
+    echo json_encode(["message" => "Product statuses are automatically calculated by the view"]);
+}
+
+// Get product statuses
+else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'statuses') {
+    $sql = "SELECT product_id, type, status FROM product_status";
+    
+    $result = $conn->query($sql);
+    
+    if ($result) {
+        $statuses = [];
+        while ($row = $result->fetch_assoc()) {
+            $statuses[] = $row;
         }
-        
-        $today = date('Y-m-d');
-        $warningDate = date('Y-m-d', strtotime('+7 days'));
-        
-        // Update expired products
-        $expiredSql = "UPDATE products 
-                      SET status = 'expired' 
-                      WHERE expiry_date IS NOT NULL AND expiry_date <= '$today'";
-        $conn->query($expiredSql);
-        
-        // Update expiring products
-        $expiringSql = "UPDATE products 
-                       SET status = 'expiring' 
-                       WHERE expiry_date IS NOT NULL 
-                       AND expiry_date > '$today' 
-                       AND expiry_date <= '$warningDate'";
-        $conn->query($expiringSql);
-        
-        // Update fresh products
-        $freshSql = "UPDATE products 
-                    SET status = 'fresh' 
-                    WHERE expiry_date IS NULL 
-                    OR (expiry_date > '$warningDate')";
-        $conn->query($freshSql);
-        
-        $conn->commit();
-        echo json_encode(["message" => "Product statuses updated successfully"]);
-        
-    } catch (Exception $e) {
-        $conn->rollback();
+        echo json_encode($statuses);
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => $e->getMessage()]);
+        echo json_encode(["error" => "Failed to fetch product statuses: " . $conn->error]);
+    }
+}
+
+// Get product statuses
+else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'statuses') {
+    $sql = "SELECT p.product_id, p.type, ps.status 
+            FROM products p 
+            JOIN product_status ps ON p.product_id = ps.product_id";
+    
+    $result = $conn->query($sql);
+    
+    if ($result) {
+        $statuses = [];
+        while ($row = $result->fetch_assoc()) {
+            $statuses[] = $row;
+        }
+        echo json_encode($statuses);
+    } else {
+        http_response_code(500);
+        echo json_encode(["error" => "Failed to fetch product statuses: " . $conn->error]);
     }
 }
 

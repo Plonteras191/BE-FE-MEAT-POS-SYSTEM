@@ -65,13 +65,15 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Not enough stock available. Current stock: $currentWeight kg");
         }
         
-        // Insert sale item
+        // Insert sale item - no need to calculate item_total, it's automatically generated
         $sql = "INSERT INTO sale_items (sale_id, product_id, quantity, price_per_kg) 
                 VALUES ($sale_id, $product_id, $quantity, $price_per_kg)";
         
         if (!$conn->query($sql)) {
             throw new Exception("Failed to create sale item: " . $conn->error);
         }
+        
+        $sale_item_id = $conn->insert_id;
         
         // Update product stock
         $newWeight = $currentWeight - floatval($quantity);
@@ -81,11 +83,32 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Failed to update product stock: " . $conn->error);
         }
         
+        // Also create a stock adjustment record
+        $adjustmentSql = "INSERT INTO stock_adjustments (product_id, quantity_change, reason, notes) 
+                          VALUES ($product_id, -$quantity, 'sale', 'Sale item #$sale_item_id')";
+        
+        if (!$conn->query($adjustmentSql)) {
+            throw new Exception("Failed to create stock adjustment record: " . $conn->error);
+        }
+        
+        // Update sale total amount
+        $updateTotalSql = "UPDATE sales s
+                          SET total_amount = (
+                              SELECT SUM(item_total) 
+                              FROM sale_items 
+                              WHERE sale_id = $sale_id
+                          )
+                          WHERE sale_id = $sale_id";
+                          
+        if (!$conn->query($updateTotalSql)) {
+            throw new Exception("Failed to update sale total: " . $conn->error);
+        }
+        
         $conn->commit();
         
         echo json_encode([
             "message" => "Sale item created successfully",
-            "sale_item_id" => $conn->insert_id
+            "sale_item_id" => $sale_item_id
         ]);
     } catch (Exception $e) {
         $conn->rollback();

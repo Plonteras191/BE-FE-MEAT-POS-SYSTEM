@@ -498,7 +498,9 @@ const ManageInventory = () => {
         return <span className="status-badge expired-badge">EXPIRED</span>;
       case 'expiring':
         const daysLeft = getDaysUntilExpiry(product.expiry_date);
-        return <span className="status-badge expiring-badge">Expiring in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
+        return daysLeft <= 0 
+          ? <span className="status-badge expired-badge">EXPIRED</span>
+          : <span className="status-badge expiring-badge">Expiring in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
       default:
         return null;
     }

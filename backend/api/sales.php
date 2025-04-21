@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     
-    if (!$data || !isset($data['receipt_no']) || !isset($data['total_amount'])) {
+    if (!$data || !isset($data['receipt_no']) || !isset($data['total_amount']) || !isset($data['amount_paid'])) {
         http_response_code(400);
         echo json_encode(["error" => "Invalid request data or missing required fields"]);
         exit;
@@ -80,6 +80,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_amount = $conn->real_escape_string($data['total_amount']);
         $amount_paid = $conn->real_escape_string($data['amount_paid']);
         
+        // No need to include change_amount as it's automatically calculated
         $sql = "INSERT INTO sales (receipt_no, total_amount, amount_paid) 
                 VALUES ('$receipt_no', '$total_amount', '$amount_paid')";
         
@@ -88,11 +89,19 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $sale_id = $conn->insert_id;
+        
+        // Get the calculated change_amount
+        $changeSql = "SELECT change_amount FROM sales WHERE sale_id = $sale_id";
+        $changeResult = $conn->query($changeSql);
+        $changeRow = $changeResult->fetch_assoc();
+        $change_amount = $changeRow['change_amount'];
+        
         $conn->commit();
         
         echo json_encode([
             "message" => "Sale created successfully",
-            "sale_id" => $sale_id
+            "sale_id" => $sale_id,
+            "change_amount" => $change_amount
         ]);
     } catch (Exception $e) {
         $conn->rollback();
