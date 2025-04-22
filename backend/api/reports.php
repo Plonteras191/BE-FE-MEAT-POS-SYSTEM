@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // Stock adjustments report with date range filtering
+// Modified getStockAdjustmentsReport function that excludes sale-related adjustments
 function getStockAdjustmentsReport($conn) {
     // Get date range filters
     $startDate = isset($_GET['start_date']) ? $conn->real_escape_string($_GET['start_date']) : null;
@@ -38,6 +39,9 @@ function getStockAdjustmentsReport($conn) {
     $reason = isset($_GET['reason']) ? $conn->real_escape_string($_GET['reason']) : null;
     
     $whereConditions = [];
+    
+    // Add base condition to exclude sale-related adjustments
+    $whereConditions[] = "sa.reason NOT LIKE '%sale%' AND sa.reason NOT LIKE '%sold%'";
     
     if ($startDate) {
         $whereConditions[] = "DATE(sa.adjustment_date) >= '$startDate'";
@@ -55,10 +59,7 @@ function getStockAdjustmentsReport($conn) {
         $whereConditions[] = "sa.reason LIKE '%$reason%'";
     }
     
-    $whereClause = "";
-    if (!empty($whereConditions)) {
-        $whereClause = " WHERE " . implode(" AND ", $whereConditions);
-    }
+    $whereClause = " WHERE " . implode(" AND ", $whereConditions);
     
     // Get adjustment summary
     $summarySql = "SELECT 
@@ -82,7 +83,11 @@ function getStockAdjustmentsReport($conn) {
                     sa.quantity_change,
                     sa.adjustment_date,
                     sa.reason,
-                    sa.notes
+                    sa.notes,
+                    CASE 
+                        WHEN sa.quantity_change > 0 THEN 'Addition'
+                        ELSE 'Reduction'
+                    END AS adjustment_type
                  FROM stock_adjustments sa
                  JOIN products p ON sa.product_id = p.product_id
                  LEFT JOIN categories c ON p.category_id = c.category_id
@@ -110,13 +115,11 @@ function getStockAdjustmentsReport($conn) {
                     SUM(CASE WHEN sa.quantity_change < 0 THEN sa.quantity_change ELSE 0 END) AS reductions
                  FROM stock_adjustments sa
                  JOIN products p ON sa.product_id = p.product_id
-                 LEFT JOIN categories c ON p.category_id = c.category_id";
-                 
-    if (!empty($whereConditions)) {
-        $productsSql .= " " . $whereClause;
-    }
-    
-    $productsSql .= " GROUP BY p.product_id ORDER BY adjustment_count DESC LIMIT 10";
+                 LEFT JOIN categories c ON p.category_id = c.category_id
+                 $whereClause
+                 GROUP BY p.product_id 
+                 ORDER BY adjustment_count DESC 
+                 LIMIT 10";
     
     $productsResult = $conn->query($productsSql);
     $topProducts = [];

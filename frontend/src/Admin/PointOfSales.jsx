@@ -247,13 +247,20 @@ const PointOfSales = () => {
       // Generate receipt number (timestamp-based)
       const receiptNo = `RCP-${Date.now()}`;
       
-      // Using the API client for API calls
+      // Prepare sale data including items for the API
       const saleData = {
         receipt_no: receiptNo,
         total_amount: totalAmount.toFixed(2),
-        amount_paid: parseFloat(amountPaid).toFixed(2)
+        amount_paid: parseFloat(amountPaid).toFixed(2),
+        discount: parseFloat(discount || 0).toFixed(2), // Include discount percentage
+        items: cart.map(item => ({
+          product_id: item.product_id,
+          quantity: parseFloat(item.quantity).toFixed(2),
+          price_per_kg: parseFloat(item.price).toFixed(2)
+        }))
       };
       
+      // Send the complete sale data in one request
       const saleResponse = await fetch("http://localhost/MEAT_POS/backend/api/sales.php", {
         method: "POST",
         headers: {
@@ -262,30 +269,20 @@ const PointOfSales = () => {
         body: JSON.stringify(saleData)
       });
       
-      const saleResult = await saleResponse.json();
-      const saleId = saleResult.sale_id;
-      
-      // Create sale items and update inventory
-      for (const item of cart) {
-        await fetch("http://localhost/MEAT_POS/backend/api/sale_items.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            sale_id: saleId,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price_per_kg: item.price
-          })
-        });
+      if (!saleResponse.ok) {
+        const errorData = await saleResponse.json();
+        throw new Error(errorData.error || "Failed to complete sale");
       }
+      
+      const saleResult = await saleResponse.json();
       
       showNotification(
         "Sale Completed", 
-        `Sale completed successfully! Receipt No: ${receiptNo}`, 
+        `Sale completed successfully! Receipt No: ${receiptNo}\nChange: ₱${saleResult.change_amount || change.toFixed(2)}`, 
         "success"
       );
+      
+      // Reset form
       setCart([]);
       setDiscount(0);
       setAmountPaid("");
@@ -293,7 +290,7 @@ const PointOfSales = () => {
     } catch (err) {
       showNotification(
         "Sale Error", 
-        "Failed to complete sale: " + (err.response?.data?.error || err.message),
+        "Failed to complete sale: " + (err.message || "Unknown error"),
         "error"
       );
       console.error(err);

@@ -1,3 +1,5 @@
+-- DB NAME: meat_pos_db
+
 -- Categories Table - Stores different meat categories
 CREATE TABLE categories (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -13,7 +15,7 @@ CREATE TABLE products (
     weight DECIMAL(10,2) NOT NULL,              -- Current stock in kg
     price DECIMAL(10,2) NOT NULL,               -- Price per kg
     expiry_date DATE,                           -- Optional expiry date
-    stock_alert DECIMAL(10,2) DEFAULT 10.00,    -- Alert threshold (added comma here)
+    stock_alert DECIMAL(10,2) DEFAULT 10.00,    -- Alert threshold
     -- Status field removed as it can be derived from expiry_date
     FOREIGN KEY (category_id) REFERENCES categories(category_id)
 );
@@ -22,9 +24,10 @@ CREATE TABLE products (
 CREATE TABLE sales (
     sale_id INT AUTO_INCREMENT PRIMARY KEY,
     receipt_no VARCHAR(50) NOT NULL,        -- Receipt number like RCP-timestamp
-    total_amount DECIMAL(10,2) NOT NULL,    -- Final amount after discount (kept for practical reasons)
+    discount DECIMAL(10,2) DEFAULT 0.00,    -- Added discount field
+    total_amount DECIMAL(10,2) NOT NULL,    -- Final amount after discount
     amount_paid DECIMAL(10,2) NOT NULL,     -- Amount customer paid
-    change_amount DECIMAL(10,2) GENERATED ALWAYS AS (amount_paid - total_amount) STORED, -- Added calculated change
+    change_amount DECIMAL(10,2) GENERATED ALWAYS AS (amount_paid - total_amount) STORED, -- Calculated change
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- When sale occurred
 );
       
@@ -70,3 +73,10 @@ SELECT
     END AS status
 FROM products;
 
+-- Sample starter data
+INSERT INTO categories (category_name) VALUES
+('Beef'),
+('Pork'),
+('Chicken'),
+('Seafood'),
+('Lamb');

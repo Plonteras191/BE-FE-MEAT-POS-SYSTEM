@@ -421,58 +421,90 @@ const Reports = () => {
         {renderReportContent()}
       </div>
 
+    
       {/* Sale Details Modal */}
-      {showSaleDetail && selectedSale && (
-        <div className="sale-detail-modal">
-          <div className="sale-detail-content">
-            <div className="sale-detail-header">
-              <h2>Sale Detail - Receipt #{selectedSale.receipt_no}</h2>
-              <button className="close-button" onClick={() => setShowSaleDetail(false)}>
-                <XCircle size={24} />
-              </button>
-            </div>
-            
-            <div className="sale-detail-info">
-              <div className="sale-info-row">
-                <span className="sale-info-label">Date:</span>
-                <span className="sale-info-value">{new Date(selectedSale.sale_date).toLocaleString()}</span>
-              </div>
-              <div className="sale-info-row">
-                <span className="sale-info-label">Total Amount:</span>
-                <span className="sale-info-value">{formatCurrency(selectedSale.total_amount)}</span>
-              </div>
-              <div className="sale-info-row">
-                <span className="sale-info-label">Change:</span>
-                <span className="sale-info-value">{formatCurrency(selectedSale.amount_paid - selectedSale.total_amount)}</span>
-              </div>
-            </div>
-            
-            <div className="sale-detail-items">
-              <h3>Products Sold</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Quantity (kg)</th>
-                    <th>Price per kg</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedSale.items && selectedSale.items.map((item, index) => (
-                    <tr key={`item-${item.sale_item_id || index}`}>
-                      <td>{item.type}</td>
-                      <td>{parseFloat(item.quantity).toFixed(2)}</td>
-                      <td>{formatCurrency(item.price_per_kg)}</td>
-                      <td>{formatCurrency(item.quantity * item.price_per_kg)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+{showSaleDetail && selectedSale && (
+  <div className="sale-detail-modal">
+    <div className="sale-detail-content">
+      <div className="sale-detail-header">
+        <h2>Sale Detail - Receipt #{selectedSale.receipt_no}</h2>
+        <button className="close-button" onClick={() => setShowSaleDetail(false)}>
+          <XCircle size={24} />
+        </button>
+      </div>
+      
+      <div className="sale-detail-info">
+        <div className="sale-info-row">
+          <span className="sale-info-label">Date:</span>
+          <span className="sale-info-value">{new Date(selectedSale.sale_date).toLocaleString()}</span>
         </div>
-      )}
+        
+        {/* Calculate subtotal by adding discount amount to total */}
+        {(() => {
+          const discountPercentage = parseFloat(selectedSale.discount || 0);
+          const totalAmount = parseFloat(selectedSale.total_amount);
+          // If there's a discount, calculate what the subtotal would have been
+          const subtotal = discountPercentage > 0 
+            ? totalAmount / (1 - (discountPercentage / 100))
+            : totalAmount;
+          const discountAmount = subtotal - totalAmount;
+          
+          return (
+            <>
+              <div className="sale-info-row">
+                <span className="sale-info-label">Subtotal:</span>
+                <span className="sale-info-value">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="sale-info-row">
+                <span className="sale-info-label">Discount ({discountPercentage}%):</span>
+                <span className="sale-info-value">{formatCurrency(discountAmount)}</span>
+              </div>
+            </>
+          );
+        })()}
+        
+        <div className="sale-info-row">
+          <span className="sale-info-label">Total Amount:</span>
+          <span className="sale-info-value">{formatCurrency(selectedSale.total_amount)}</span>
+        </div>
+        <div className="sale-info-row">
+          <span className="sale-info-label">Amount Paid:</span>
+          <span className="sale-info-value">{formatCurrency(selectedSale.amount_paid)}</span>
+        </div>
+        <div className="sale-info-row">
+          <span className="sale-info-label">Change:</span>
+          <span className="sale-info-value">
+            {formatCurrency(selectedSale.change_amount || parseFloat(selectedSale.amount_paid) - parseFloat(selectedSale.total_amount))}
+          </span>
+        </div>
+      </div>
+      
+      <div className="sale-detail-items">
+        <h3>Products Sold</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Quantity (kg)</th>
+              <th>Price per kg</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {selectedSale.items && selectedSale.items.map((item, index) => (
+              <tr key={`item-${item.sale_item_id || index}`}>
+                <td>{item.type}</td>
+                <td>{parseFloat(item.quantity).toFixed(2)}</td>
+                <td>{formatCurrency(item.price_per_kg)}</td>
+                <td>{formatCurrency(item.quantity * item.price_per_kg)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
@@ -645,6 +677,7 @@ const InventoryReport = ({ data }) => {
 };
 
 // Stock Adjustments Report Component
+// Stock Adjustments Report Component
 const StockAdjustmentsReport = ({ data, dateLabel }) => {
   if (!data) return null;
 
@@ -652,15 +685,15 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
     <div className="stock-adjustments-report">
       <div className="summary-cards">
         <div className="summary-card">
-          <h3>Total Adjustments ({dateLabel})</h3>
+          <h3>Total Manual Adjustments ({dateLabel})</h3>
           <p className="card-value">{data.summary?.total_adjustments || 0}</p>
         </div>
         <div className="summary-card">
-          <h3>Total Additions</h3>
+          <h3>Stock Additions</h3>
           <p className="card-value">{parseFloat(data.summary?.total_additions || 0).toFixed(2)} kg</p>
         </div>
         <div className="summary-card">
-          <h3>Total Reductions</h3>
+          <h3>Stock Reductions</h3>
           <p className="card-value">{parseFloat(data.summary?.total_reductions || 0).toFixed(2)} kg</p>
         </div>
         <div className="summary-card">
@@ -670,7 +703,7 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
       </div>
 
       <div className="data-table">
-        <h3>Top Adjusted Products ({dateLabel})</h3>
+        <h3>Top Manually Adjusted Products ({dateLabel})</h3>
         <table>
           <thead>
             <tr>
@@ -693,7 +726,7 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
                   {parseFloat(product.net_change).toFixed(2)} kg
                 </td>
                 <td className="positive-change">{parseFloat(product.additions || 0).toFixed(2)} kg</td>
-                <td className="negative-change">{parseFloat(product.reductions || 0).toFixed(2)} kg</td>
+                <td className="negative-change">{parseFloat(Math.abs(product.reductions) || 0).toFixed(2)} kg</td>
               </tr>
             ))
           ) : (
@@ -706,13 +739,14 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
       </div>
 
       <div className="data-table">
-        <h3>Recent Adjustments</h3>
+        <h3>Recent Manual Stock Adjustments</h3>
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Product</th>
               <th>Category</th>
+              <th>Adjustment Type</th>
               <th>Quantity Change</th>
               <th>Date</th>
               <th>Reason</th>
@@ -726,8 +760,9 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
                   <td>{adjustment.adjustment_id}</td>
                   <td>{adjustment.product_name}</td>
                   <td>{adjustment.category_name}</td>
+                  <td>{parseFloat(adjustment.quantity_change) >= 0 ? 'Addition' : 'Reduction'}</td>
                   <td className={parseFloat(adjustment.quantity_change) >= 0 ? 'positive-change' : 'negative-change'}>
-                    {parseFloat(adjustment.quantity_change).toFixed(2)} kg
+                    {parseFloat(Math.abs(adjustment.quantity_change)).toFixed(2)} kg
                   </td>
                   <td>{new Date(adjustment.adjustment_date).toLocaleString()}</td>
                   <td>{adjustment.reason}</td>
@@ -736,7 +771,7 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="no-data">No adjustment data available</td>
+                <td colSpan="8" className="no-data">No adjustment data available</td>
               </tr>
             )}
           </tbody>

@@ -146,7 +146,7 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-green-600">Today's Sales</p>
-                <p className="text-2xl font-semibold text-gray-900">{dashboardData.today_sales_count} orders</p>
+                <p className="text-2xl font-semibold text-gray-900">{dashboardData.today_sales_count} SOLD</p>
                 <p className="text-sm font-medium text-gray-500">{formatCurrency(dashboardData.today_sales_amount)}</p>
               </div>
             </div>

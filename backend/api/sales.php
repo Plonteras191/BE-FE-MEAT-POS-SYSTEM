@@ -79,16 +79,50 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $receipt_no = $conn->real_escape_string($data['receipt_no']);
         $total_amount = $conn->real_escape_string($data['total_amount']);
         $amount_paid = $conn->real_escape_string($data['amount_paid']);
+        $discount = isset($data['discount']) ? $conn->real_escape_string($data['discount']) : '0.00';
         
-        // No need to include change_amount as it's automatically calculated
-        $sql = "INSERT INTO sales (receipt_no, total_amount, amount_paid) 
-                VALUES ('$receipt_no', '$total_amount', '$amount_paid')";
+        // Include discount in the INSERT query
+        $sql = "INSERT INTO sales (receipt_no, total_amount, amount_paid, discount) 
+                VALUES ('$receipt_no', '$total_amount', '$amount_paid', '$discount')";
         
         if (!$conn->query($sql)) {
             throw new Exception("Failed to create sale: " . $conn->error);
         }
         
         $sale_id = $conn->insert_id;
+        
+        // Process sale items if provided
+        if (isset($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $item) {
+                if (!isset($item['product_id']) || !isset($item['quantity']) || !isset($item['price_per_kg'])) {
+                    throw new Exception("Invalid item data");
+                }
+                
+                $product_id = $conn->real_escape_string($item['product_id']);
+                $quantity = $conn->real_escape_string($item['quantity']);
+                $price_per_kg = $conn->real_escape_string($item['price_per_kg']);
+                
+                $itemSql = "INSERT INTO sale_items (sale_id, product_id, quantity, price_per_kg) 
+                           VALUES ($sale_id, $product_id, $quantity, $price_per_kg)";
+                
+                if (!$conn->query($itemSql)) {
+                    throw new Exception("Failed to create sale item: " . $conn->error);
+                }
+                
+                // Update product inventory
+                $updateSql = "UPDATE products SET weight = weight - $quantity WHERE product_id = $product_id";
+                if (!$conn->query($updateSql)) {
+                    throw new Exception("Failed to update product inventory: " . $conn->error);
+                }
+                
+                // Record the stock adjustment
+                $adjustmentSql = "INSERT INTO stock_adjustments (product_id, quantity_change, reason, notes) 
+                                VALUES ($product_id, -$quantity, 'sale', 'Sale ID: $sale_id')";
+                if (!$conn->query($adjustmentSql)) {
+                    throw new Exception("Failed to record stock adjustment: " . $conn->error);
+                }
+            }
+        }
         
         // Get the calculated change_amount
         $changeSql = "SELECT change_amount FROM sales WHERE sale_id = $sale_id";
@@ -101,7 +135,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             "message" => "Sale created successfully",
             "sale_id" => $sale_id,
-            "change_amount" => $change_amount
+            "change_amount" => $change_amount,
+            "discount" => $discount
         ]);
     } catch (Exception $e) {
         $conn->rollback();
