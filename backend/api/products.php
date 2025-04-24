@@ -11,13 +11,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 FROM products p 
                 LEFT JOIN categories c ON p.category_id = c.category_id 
                 LEFT JOIN product_status ps ON p.product_id = ps.product_id
-                WHERE p.product_id = $productId";
+                WHERE p.product_id = $productId AND p.is_deleted = 0";
     } else {
+        // Only show non-deleted products by default
         $sql = "SELECT p.*, c.category_name, ps.status 
                 FROM products p 
                 LEFT JOIN categories c ON p.category_id = c.category_id
                 LEFT JOIN product_status ps ON p.product_id = ps.product_id
+                WHERE p.is_deleted = 0
                 ORDER BY p.type";
+    }
+    
+    // Add option to include deleted products if requested
+    if (isset($_GET['include_deleted']) && $_GET['include_deleted'] == 1) {
+        $sql = str_replace("WHERE p.is_deleted = 0", "", $sql);
+        $sql = str_replace("AND p.is_deleted = 0", "", $sql);
     }
     
     $result = $conn->query($sql);
@@ -77,8 +85,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
-    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert) 
-            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert')";
+    $sql = "INSERT INTO products (type, category_id, supplier, weight, price, expiry_date, stock_alert, is_deleted) 
+            VALUES ('$type', $category_id, '$supplier', '$weight', '$price', $expiry_date, '$stock_alert', 0)";
     
     if ($conn->query($sql)) {
         $product_id = $conn->insert_id;
@@ -152,7 +160,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     }
 }
 
-// Delete a product
+// Soft Delete a product
 else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     if (!isset($_GET['id'])) {
         http_response_code(400);
@@ -162,42 +170,42 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     
     $product_id = $conn->real_escape_string($_GET['id']);
     
-    // Start a transaction for safely handling multiple operations
-    $conn->begin_transaction();
+    // Perform soft delete by setting is_deleted flag to 1
+    $sql = "UPDATE products SET is_deleted = 1 WHERE product_id = $product_id";
     
-    try {
-        // First delete from related tables
-        $conn->query("DELETE FROM sale_items WHERE product_id = $product_id");
-        $conn->query("DELETE FROM stock_adjustments WHERE product_id = $product_id");
-        
-        // Then delete the product
-        $sql = "DELETE FROM products WHERE product_id = $product_id";
-        $result = $conn->query($sql);
-        
-        if (!$result) {
-            throw new Exception("Failed to delete product: " . $conn->error);
-        }
-        
-        // Commit the transaction
-        $conn->commit();
-        echo json_encode(["message" => "Product deleted successfully"]);
-        
-    } catch (Exception $e) {
-        // Roll back the transaction on error
-        $conn->rollback();
+    if ($conn->query($sql)) {
+        echo json_encode(["message" => "Product soft deleted successfully"]);
+    } else {
         http_response_code(500);
-        echo json_encode(["error" => $e->getMessage()]);
+        echo json_encode(["error" => "Failed to soft delete product: " . $conn->error]);
     }
 }
 
-// Update product statuses - NEW PATCH METHOD
-// Update product statuses - NEW PATCH METHOD
+// Restore a soft-deleted product
+else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_GET['action'] === 'restore') {
+    if (!isset($_GET['id'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Missing product ID"]);
+        exit;
+    }
+    
+    $product_id = $conn->real_escape_string($_GET['id']);
+    
+    // Restore by setting is_deleted flag back to 0
+    $sql = "UPDATE products SET is_deleted = 0 WHERE product_id = $product_id";
+    
+    if ($conn->query($sql)) {
+        echo json_encode(["message" => "Product restored successfully"]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["error" => "Failed to restore product: " . $conn->error]);
+    }
+}
+
+// Update product statuses
 else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_GET['action'] === 'update_status') {
     // Since product_status is a VIEW and not a physical table, we don't need to update it manually
     // The view will automatically reflect the current status based on expiry dates
-    
-    // We can optionally update the product expiry dates if needed
-    // But that's not needed here since statuses are calculated from existing expiry dates
     
     // Return success message
     echo json_encode(["message" => "Product statuses are automatically calculated by the view"]);
@@ -205,27 +213,10 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_G
 
 // Get product statuses
 else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'statuses') {
-    $sql = "SELECT product_id, type, status FROM product_status";
-    
-    $result = $conn->query($sql);
-    
-    if ($result) {
-        $statuses = [];
-        while ($row = $result->fetch_assoc()) {
-            $statuses[] = $row;
-        }
-        echo json_encode($statuses);
-    } else {
-        http_response_code(500);
-        echo json_encode(["error" => "Failed to fetch product statuses: " . $conn->error]);
-    }
-}
-
-// Get product statuses
-else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'statuses') {
     $sql = "SELECT p.product_id, p.type, ps.status 
             FROM products p 
-            JOIN product_status ps ON p.product_id = ps.product_id";
+            JOIN product_status ps ON p.product_id = ps.product_id
+            WHERE p.is_deleted = 0";
     
     $result = $conn->query($sql);
     

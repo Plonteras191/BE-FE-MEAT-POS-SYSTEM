@@ -16,6 +16,7 @@ CREATE TABLE products (
     price DECIMAL(10,2) NOT NULL,               -- Price per kg
     expiry_date DATE,                           -- Optional expiry date
     stock_alert DECIMAL(10,2) DEFAULT 10.00,    -- Alert threshold
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,   -- Soft delete flag: 0 = active, 1 = deleted
     -- Status field removed as it can be derived from expiry_date
     FOREIGN KEY (category_id) REFERENCES categories(category_id)
 );
@@ -65,6 +66,7 @@ SELECT
     price,
     expiry_date,
     stock_alert,
+    is_deleted,
     CASE 
         WHEN expiry_date IS NULL THEN 'fresh'
         WHEN expiry_date < CURDATE() THEN 'expired'

@@ -11,6 +11,7 @@ const ManageInventory = () => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState("all"); // State for category filter
+  const [showDeleted, setShowDeleted] = useState(false); // State to toggle showing deleted items
   const [formData, setFormData] = useState({
     type: "",
     category_id: "",
@@ -67,7 +68,7 @@ const ManageInventory = () => {
     fetchCategories();
     // Also update product statuses when component mounts
     updateProductStatuses();
-  }, []);
+  }, [showDeleted]); // Refetch when showDeleted toggle changes
 
   // Apply category filter effect
   useEffect(() => {
@@ -91,6 +92,11 @@ const ManageInventory = () => {
     setCategoryFilter(e.target.value);
   };
 
+  // Function to toggle showing deleted items
+  const toggleShowDeleted = () => {
+    setShowDeleted(!showDeleted);
+  };
+
   // Function to update all product statuses based on expiry dates
   const updateProductStatuses = async () => {
     try {
@@ -105,7 +111,10 @@ const ManageInventory = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await productsApi.getAll();
+      // Use the appropriate API call based on showDeleted state
+      const response = showDeleted 
+        ? await productsApi.getAllWithDeleted()
+        : await productsApi.getAll();
       
       // Ensure we got an array
       const productsData = Array.isArray(response.data) ? response.data : [];
@@ -128,13 +137,14 @@ const ManageInventory = () => {
       return;
     }
     
-    // Check low stock
-    const lowStock = productsData.filter(p => parseFloat(p.weight) <= parseFloat(p.stock_alert));
+    // Check low stock (only for active/non-deleted products)
+    const activeProducts = productsData.filter(p => p.is_deleted !== '1');
+    const lowStock = activeProducts.filter(p => parseFloat(p.weight) <= parseFloat(p.stock_alert));
     setLowStockItems(lowStock);
     setShowStockAlert(lowStock.length > 0);
     
-    // Check expiring products based on status
-    const expiringItems = productsData.filter(p => p.status === 'expiring');
+    // Check expiring products based on status (only for active/non-deleted products)
+    const expiringItems = activeProducts.filter(p => p.status === 'expiring');
     setExpiryItems(expiringItems);
     setShowExpiryAlert(expiringItems.length > 0);
   };
@@ -308,10 +318,10 @@ const ManageInventory = () => {
     setShowProductForm(false);
   };
 
-  const handleDelete = async (id) => {
+  const handleSoftDelete = async (id) => {
     showModal({
-      title: "Confirm Deletion",
-      content: "Are you sure you want to delete this product? This will also remove related sales and stock adjustment records.",
+      title: "Confirm Removal",
+      content: "Are you sure you want to remove this product from the inventory? The product will be marked as deleted but can be restored later.",
       type: "warning",
       actionButtons: [
         {
@@ -319,7 +329,7 @@ const ManageInventory = () => {
           onClick: () => closeModal()
         },
         {
-          label: "Delete",
+          label: "Remove",
           type: "danger",
           onClick: async () => {
             try {
@@ -328,13 +338,52 @@ const ManageInventory = () => {
               fetchProducts();
               showModal({
                 title: "Success",
-                content: "Product deleted successfully!",
+                content: "Product removed successfully!",
                 type: "success"
               });
             } catch (err) {
               showModal({
                 title: "Error",
-                content: err.response?.data?.error || "Failed to delete product",
+                content: err.response?.data?.error || "Failed to remove product",
+                type: "error"
+              });
+              console.error(err);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  const handleRestore = async (id) => {
+    showModal({
+      title: "Confirm Restoration",
+      content: "Are you sure you want to restore this product to the active inventory?",
+      type: "info",
+      actionButtons: [
+        {
+          label: "Cancel",
+          onClick: () => closeModal()
+        },
+        {
+          label: "Restore",
+          type: "primary",
+          onClick: async () => {
+            try {
+              setIsLoading(true);
+              await productsApi.restore(id);
+              fetchProducts();
+              showModal({
+                title: "Success",
+                content: "Product restored successfully!",
+                type: "success"
+              });
+            } catch (err) {
+              showModal({
+                title: "Error",
+                content: err.response?.data?.error || "Failed to restore product",
                 type: "error"
               });
               console.error(err);
@@ -485,6 +534,7 @@ const ManageInventory = () => {
 
   // Function to get row class based on product status and stock level
   const getRowClassName = (product) => {
+    if (product.is_deleted === '1') return "deleted";
     if (product.status === 'expired') return "expired";
     if (product.status === 'expiring') return "near-expiry";
     if (parseFloat(product.weight) <= parseFloat(product.stock_alert)) return "low-stock";
@@ -493,6 +543,10 @@ const ManageInventory = () => {
 
   // Function to get status badge for the product
   const getStatusBadge = (product) => {
+    if (product.is_deleted === '1') {
+      return <span className="status-badge deleted-badge">REMOVED</span>;
+    }
+    
     switch (product.status) {
       case 'expired':
         return <span className="status-badge expired-badge">EXPIRED</span>;
@@ -572,6 +626,14 @@ const ManageInventory = () => {
           <button onClick={openAddProductForm} className="add-product-btn">
             Add New Product
           </button>
+          
+          {/* Toggle for showing deleted items */}
+          <button 
+            onClick={toggleShowDeleted} 
+            className={`toggle-deleted-btn ${showDeleted ? 'active' : ''}`}
+          >
+            {showDeleted ? 'Hide Removed Products' : 'Show Removed Products'}
+          </button>
         </div>
         
         {/* Category Filter */}
@@ -620,7 +682,9 @@ const ManageInventory = () => {
                 <td colSpan="9" className="no-data">
                   {categoryFilter !== "all" 
                     ? "No products found in this category" 
-                    : "No products found"}
+                    : showDeleted
+                      ? "No products found" 
+                      : "No active products found"}
                 </td>
               </tr>
             ) : (
@@ -637,32 +701,44 @@ const ManageInventory = () => {
                   </td>
                   <td>{p.stock_alert}</td>
                   <td className="action-buttons">
-                    <button 
-                      className="edit-btn" 
-                      onClick={() => handleEdit(p)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="delete-btn" 
-                      onClick={() => handleDelete(p.product_id)}
-                    >
-                      Delete
-                    </button>
-                    <div className="stock-actions">
+                    {/* Show different actions based on whether the product is deleted or not */}
+                    {p.is_deleted === '1' ? (
                       <button 
-                        className="add-stock-btn" 
-                        onClick={() => openStockAdjustmentModal(p, "add")}
+                        className="restore-btn" 
+                        onClick={() => handleRestore(p.product_id)}
                       >
-                        + Stock
+                        Restore
                       </button>
-                      <button 
-                        className="remove-stock-btn" 
-                        onClick={() => openStockAdjustmentModal(p, "remove")}
-                      >
-                        - Stock
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <button 
+                          className="edit-btn" 
+                          onClick={() => handleEdit(p)}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          className="remove-btn" 
+                          onClick={() => handleSoftDelete(p.product_id)}
+                        >
+                          Remove
+                        </button>
+                        <div className="stock-actions">
+                          <button 
+                            className="add-stock-btn" 
+                            onClick={() => openStockAdjustmentModal(p, "add")}
+                          >
+                            + Stock
+                          </button>
+                          <button 
+                            className="remove-stock-btn" 
+                            onClick={() => openStockAdjustmentModal(p, "remove")}
+                          >
+                            - Stock
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))

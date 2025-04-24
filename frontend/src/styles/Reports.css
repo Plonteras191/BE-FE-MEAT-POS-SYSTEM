@@ -66,6 +66,9 @@
 }
 
 .date-filter-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
   background-color: white;
   border: 1px solid #e1e9f1;
@@ -86,6 +89,30 @@
   background-color: #0063cc;
   color: white;
   border-color: #0063cc;
+}
+
+/* Calendar picker styling */
+.calendar-picker {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.date-picker {
+  padding: 8px 12px;
+  border: 1px solid #e1e9f1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #2d3748;
+  background-color: white;
+  transition: border-color 0.2s ease;
+  width: 200px;
+}
+
+.date-picker:focus {
+  outline: none;
+  border-color: #0063cc;
+  box-shadow: 0 0 0 2px rgba(0, 99, 204, 0.1);
 }
 
 /* Filter container */
@@ -131,6 +158,7 @@
   color: #2d3748;
   background-color: white;
   transition: border-color 0.2s ease;
+  width: 100%;
 }
 
 .filter-group select:focus,
@@ -212,6 +240,11 @@
   border-color: #0063cc33;
 }
 
+.export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .refresh-button {
   background-color: #ebf5ff;
   color: #0063cc;
@@ -262,6 +295,7 @@
 /* Data tables */
 .data-table {
   margin-bottom: 24px;
+  overflow-x: auto;
 }
 
 .data-table h3 {
@@ -383,6 +417,7 @@ tbody tr:hover {
   background-color: #fee2e2;
   color: #b91c1c;
   border-radius: 8px;
+  padding: 12px 16px;
 }
 
 /* Sale detail modal */
@@ -397,6 +432,12 @@ tbody tr:hover {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .sale-detail-content {
@@ -408,6 +449,12 @@ tbody tr:hover {
   overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   padding: 24px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .sale-detail-header {
@@ -453,10 +500,14 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
+  padding: 4px 0;
 }
 
 .sale-info-row:last-child {
   margin-bottom: 0;
+  padding-top: 8px;
+  border-top: 1px dashed #e1e9f1;
+  font-weight: 600;
 }
 
 .sale-info-label {
@@ -474,6 +525,46 @@ tbody tr:hover {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
+}
+
+/* Tab-specific styling */
+/* Sales Report */
+.sales-report .summary-card:first-child {
+  border-left-color: #0063cc;
+}
+
+.sales-report .summary-card:nth-child(2) {
+  border-left-color: #10b981;
+}
+
+/* Inventory Report */
+.inventory-report .summary-card:first-child {
+  border-left-color: #0063cc;
+}
+
+.inventory-report .summary-card:nth-child(2) {
+  border-left-color: #10b981;
+}
+
+.inventory-report .summary-card:nth-child(3) {
+  border-left-color: #f59e0b;
+}
+
+/* Stock Adjustments Report */
+.stock-adjustments-report .summary-card:first-child {
+  border-left-color: #0063cc;
+}
+
+.stock-adjustments-report .summary-card:nth-child(2) {
+  border-left-color: #10b981;
+}
+
+.stock-adjustments-report .summary-card:nth-child(3) {
+  border-left-color: #ef4444;
+}
+
+.stock-adjustments-report .summary-card:nth-child(4) {
+  border-left-color: #8b5cf6;
 }
 
 /* Responsive design */
@@ -497,9 +588,18 @@ tbody tr:hover {
     width: 100%;
   }
   
-  .filter-button,
   .reset-button {
     flex: 1;
+    justify-content: center;
+  }
+  
+  .report-actions {
+    flex-direction: column;
+  }
+  
+  .export-button, .refresh-button {
+    width: 100%;
+    justify-content: center;
   }
   
   .summary-cards {
@@ -509,10 +609,38 @@ tbody tr:hover {
   .sale-detail-content {
     width: 95%;
     padding: 16px;
+    max-height: 95vh;
   }
   
-  /* Handle table overflow on small screens */
-  .data-table {
-    overflow-x: auto;
+  .reports-tabs {
+    flex-direction: column;
+  }
+  
+  .tab-button {
+    width: 100%;
+  }
+  
+  .date-filter-buttons {
+    flex-direction: column;
+  }
+  
+  .date-filter-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .calendar-picker {
+    width: 100%;
+  }
+  
+  .date-picker {
+    width: 100%;
+  }
+}
+
+/* For medium-sized screens */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

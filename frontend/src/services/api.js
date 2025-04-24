@@ -1,5 +1,7 @@
 import axios from "axios";
 
+// src/services/api.js
+
 const API_BASE_URL = "http://localhost/MEAT_POS/backend/api";
 
 // Create axios instance with base URL
@@ -13,10 +15,12 @@ const apiClient = axios.create({
 // Products API
 export const productsApi = {
   getAll: () => apiClient.get("/products.php"),
+  getAllWithDeleted: () => apiClient.get("/products.php?include_deleted=1"),
   getById: (id) => apiClient.get(`/products.php?id=${id}`),
   create: (data) => apiClient.post("/products.php", data),
   update: (data) => apiClient.put("/products.php", data),
   delete: (id) => apiClient.delete(`/products.php?id=${id}`),
+  restore: (id) => apiClient.patch(`/products.php?action=restore&id=${id}`),
   updateStatuses: () => apiClient.patch("/products.php?action=update_status")
 };
 
@@ -25,7 +29,6 @@ export const categoriesApi = {
   getAll: () => apiClient.get("/categories.php"),
   create: (data) => apiClient.post("/categories.php", data)
 };
-
 
 // Stock Adjustments API
 export const stockAdjustmentsApi = {

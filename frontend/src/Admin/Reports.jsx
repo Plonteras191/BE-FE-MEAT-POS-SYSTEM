@@ -15,6 +15,7 @@ const Reports = () => {
   const [reportData, setReportData] = useState(null);
   const [error, setError] = useState(null);
   const [activeDateFilter, setActiveDateFilter] = useState("today");
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showSaleDetail, setShowSaleDetail] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [filters, setFilters] = useState({
@@ -25,6 +26,7 @@ const Reports = () => {
   });
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     // Fetch categories for filters
@@ -52,53 +54,55 @@ const Reports = () => {
     fetchReport(activeTab);
   }, [activeTab]);
 
-  // Function to calculate date range based on filter
-  const getDateRange = (filter) => {
-    const today = new Date();
-    const endDate = today.toISOString().split('T')[0];
-    let startDate;
+  // Effect to automatically apply filters when they change
+  useEffect(() => {
+    fetchReport(activeTab);
+  }, [filters, activeDateFilter, selectedDate]);
 
-    switch (filter) {
-      case 'today':
-        startDate = endDate;
-        break;
-      case 'week':
-        const lastWeek = new Date();
-        lastWeek.setDate(today.getDate() - 7);
-        startDate = lastWeek.toISOString().split('T')[0];
-        break;
-      case 'month':
-        const lastMonth = new Date();
-        lastMonth.setMonth(today.getMonth() - 1);
-        startDate = lastMonth.toISOString().split('T')[0];
-        break;
-      case 'all':
-        startDate = ''; // Leave empty for all dates
-        break;
-      default:
-        startDate = endDate;
+  // Function to get date based on filter or calendar selection
+  const getDateForReport = () => {
+    if (activeDateFilter === 'custom') {
+      return { date: selectedDate };
     }
 
-    return { startDate, endDate };
+    const today = new Date();
+    const formattedToday = today.toISOString().split('T')[0];
+    
+    switch (activeDateFilter) {
+      case 'today':
+        return { date: formattedToday };
+      case 'week': {
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+        return { 
+          startDate: lastWeek.toISOString().split('T')[0],
+          endDate: formattedToday 
+        };
+      }
+      case 'month': {
+        const lastMonth = new Date();
+        lastMonth.setMonth(today.getMonth() - 1);
+        return { 
+          startDate: lastMonth.toISOString().split('T')[0],
+          endDate: formattedToday 
+        };
+      }
+      case 'all':
+        return {}; // No date filtering
+      default:
+        return { date: formattedToday };
+    }
   };
 
-  const fetchReport = async (reportType, dateFilter = activeDateFilter) => {
+  const fetchReport = async (reportType) => {
     setError(null);
   
     try {
-      // Get date range based on selected filter
-      const dateRange = getDateRange(dateFilter);
+      // Get date parameters based on selected filter
+      const dateParams = getDateForReport();
       
       // Build query parameters based on report type and date range
-      const params = {};
-      
-      if (dateRange.startDate) {
-        params.start_date = dateRange.startDate;
-      }
-      
-      if (dateRange.endDate && dateFilter !== 'all') {
-        params.end_date = dateRange.endDate;
-      }
+      const params = { ...dateParams };
       
       // Add specific filters based on report type
       if (reportType === 'sales' && filters.categoryId) {
@@ -141,21 +145,30 @@ const Reports = () => {
       ...prev,
       [name]: value
     }));
+    // Filters will be applied automatically through useEffect
   };
 
   const handleDateFilterChange = (filter) => {
     setActiveDateFilter(filter);
-    fetchReport(activeTab, filter);
+    if (filter === 'custom') {
+      setShowCalendar(true);
+    } else {
+      setShowCalendar(false);
+      // fetchReport will be called automatically through useEffect
+    }
   };
 
-  const handleApplyFilters = () => {
-    fetchReport(activeTab);
+  const handleDateSelect = (e) => {
+    setSelectedDate(e.target.value);
+    // Calendar date will be applied automatically through useEffect
   };
 
   const handleResetFilters = () => {
     setFilters({ categoryId: '', receiptNo: '', productId: '', reason: '' });
-    setActiveDateFilter('all');
-    fetchReport(activeTab, 'all');
+    setActiveDateFilter('today');
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setShowCalendar(false);
+    // fetchReport will be called automatically through useEffect
   };
 
   const downloadExcel = (data, filename) => {
@@ -194,8 +207,6 @@ const Reports = () => {
 
   // Helper function to get date label for reports
   const getDateLabel = () => {
-    const dateRange = getDateRange(activeDateFilter);
-    
     switch (activeDateFilter) {
       case 'today':
         return 'Today';
@@ -205,6 +216,8 @@ const Reports = () => {
         return 'Last 30 Days';
       case 'all':
         return 'All Time';
+      case 'custom':
+        return `Selected: ${selectedDate}`;
       default:
         return '';
     }
@@ -342,7 +355,6 @@ const Reports = () => {
         </button>
       </div>
       
-      {/* Replace date range inputs with filter buttons */}
       <div className="date-filter-container">
         <div className="date-filter-buttons">
           <button 
@@ -369,7 +381,25 @@ const Reports = () => {
           >
             All
           </button>
+          <button 
+            className={`date-filter-button ${activeDateFilter === 'custom' ? 'active' : ''}`}
+            onClick={() => handleDateFilterChange('custom')}
+          >
+            <CalendarIcon size={16} />
+            Custom
+          </button>
         </div>
+        
+        {showCalendar && (
+          <div className="calendar-picker">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handleDateSelect}
+              className="date-picker"
+            />
+          </div>
+        )}
       </div>
 
       <div className="filter-container">
@@ -379,13 +409,9 @@ const Reports = () => {
         </div>
         
         <div className="filter-actions">
-          <button className="filter-button" onClick={handleApplyFilters}>
-            <Filter size={16} />
-            Apply Filters
-          </button>
           <button className="reset-button" onClick={handleResetFilters}>
             <RefreshCw size={16} />
-            Reset
+            Reset Filters
           </button>
         </div>
       </div>
@@ -421,94 +447,92 @@ const Reports = () => {
         {renderReportContent()}
       </div>
 
-    
       {/* Sale Details Modal */}
-{showSaleDetail && selectedSale && (
-  <div className="sale-detail-modal">
-    <div className="sale-detail-content">
-      <div className="sale-detail-header">
-        <h2>Sale Detail - Receipt #{selectedSale.receipt_no}</h2>
-        <button className="close-button" onClick={() => setShowSaleDetail(false)}>
-          <XCircle size={24} />
-        </button>
-      </div>
-      
-      <div className="sale-detail-info">
-        <div className="sale-info-row">
-          <span className="sale-info-label">Date:</span>
-          <span className="sale-info-value">{new Date(selectedSale.sale_date).toLocaleString()}</span>
-        </div>
-        
-        {/* Calculate subtotal by adding discount amount to total */}
-        {(() => {
-          const discountPercentage = parseFloat(selectedSale.discount || 0);
-          const totalAmount = parseFloat(selectedSale.total_amount);
-          // If there's a discount, calculate what the subtotal would have been
-          const subtotal = discountPercentage > 0 
-            ? totalAmount / (1 - (discountPercentage / 100))
-            : totalAmount;
-          const discountAmount = subtotal - totalAmount;
-          
-          return (
-            <>
+      {showSaleDetail && selectedSale && (
+        <div className="sale-detail-modal">
+          <div className="sale-detail-content">
+            <div className="sale-detail-header">
+              <h2>Sale Detail - Receipt #{selectedSale.receipt_no}</h2>
+              <button className="close-button" onClick={() => setShowSaleDetail(false)}>
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="sale-detail-info">
               <div className="sale-info-row">
-                <span className="sale-info-label">Subtotal:</span>
-                <span className="sale-info-value">{formatCurrency(subtotal)}</span>
+                <span className="sale-info-label">Date:</span>
+                <span className="sale-info-value">{new Date(selectedSale.sale_date).toLocaleString()}</span>
+              </div>
+              
+              {/* Calculate subtotal by adding discount amount to total */}
+              {(() => {
+                const discountPercentage = parseFloat(selectedSale.discount || 0);
+                const totalAmount = parseFloat(selectedSale.total_amount);
+                // If there's a discount, calculate what the subtotal would have been
+                const subtotal = discountPercentage > 0 
+                  ? totalAmount / (1 - (discountPercentage / 100))
+                  : totalAmount;
+                const discountAmount = subtotal - totalAmount;
+                
+                return (
+                  <>
+                    <div className="sale-info-row">
+                      <span className="sale-info-label">Subtotal:</span>
+                      <span className="sale-info-value">{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="sale-info-row">
+                      <span className="sale-info-label">Discount ({discountPercentage}%):</span>
+                      <span className="sale-info-value">{formatCurrency(discountAmount)}</span>
+                    </div>
+                  </>
+                );
+              })()}
+              
+              <div className="sale-info-row">
+                <span className="sale-info-label">Total Amount:</span>
+                <span className="sale-info-value">{formatCurrency(selectedSale.total_amount)}</span>
               </div>
               <div className="sale-info-row">
-                <span className="sale-info-label">Discount ({discountPercentage}%):</span>
-                <span className="sale-info-value">{formatCurrency(discountAmount)}</span>
+                <span className="sale-info-label">Amount Paid:</span>
+                <span className="sale-info-value">{formatCurrency(selectedSale.amount_paid)}</span>
               </div>
-            </>
-          );
-        })()}
-        
-        <div className="sale-info-row">
-          <span className="sale-info-label">Total Amount:</span>
-          <span className="sale-info-value">{formatCurrency(selectedSale.total_amount)}</span>
+              <div className="sale-info-row">
+                <span className="sale-info-label">Change:</span>
+                <span className="sale-info-value">
+                  {formatCurrency(selectedSale.change_amount || parseFloat(selectedSale.amount_paid) - parseFloat(selectedSale.total_amount))}
+                </span>
+              </div>
+            </div>
+            
+            <div className="sale-detail-items">
+              <h3>Products Sold</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Quantity (kg)</th>
+                    <th>Price per kg</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedSale.items && selectedSale.items.map((item, index) => (
+                    <tr key={`item-${item.sale_item_id || index}`}>
+                      <td>{item.type}</td>
+                      <td>{parseFloat(item.quantity).toFixed(2)}</td>
+                      <td>{formatCurrency(item.price_per_kg)}</td>
+                      <td>{formatCurrency(item.quantity * item.price_per_kg)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div className="sale-info-row">
-          <span className="sale-info-label">Amount Paid:</span>
-          <span className="sale-info-value">{formatCurrency(selectedSale.amount_paid)}</span>
-        </div>
-        <div className="sale-info-row">
-          <span className="sale-info-label">Change:</span>
-          <span className="sale-info-value">
-            {formatCurrency(selectedSale.change_amount || parseFloat(selectedSale.amount_paid) - parseFloat(selectedSale.total_amount))}
-          </span>
-        </div>
-      </div>
-      
-      <div className="sale-detail-items">
-        <h3>Products Sold</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Quantity (kg)</th>
-              <th>Price per kg</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {selectedSale.items && selectedSale.items.map((item, index) => (
-              <tr key={`item-${item.sale_item_id || index}`}>
-                <td>{item.type}</td>
-                <td>{parseFloat(item.quantity).toFixed(2)}</td>
-                <td>{formatCurrency(item.price_per_kg)}</td>
-                <td>{formatCurrency(item.quantity * item.price_per_kg)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };
-
 
 // Helper function for currency formatting - updated to Philippine Peso
 const formatCurrency = (value) => {
@@ -676,7 +700,6 @@ const InventoryReport = ({ data }) => {
   );
 };
 
-// Stock Adjustments Report Component
 // Stock Adjustments Report Component
 const StockAdjustmentsReport = ({ data, dateLabel }) => {
   if (!data) return null;

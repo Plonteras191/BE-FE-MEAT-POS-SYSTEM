@@ -90,6 +90,23 @@ h3 {
   gap: 10px;
 }
 
+/* Toggle Deleted Button */
+.toggle-deleted-btn {
+  background-color: var(--light);
+  color: var(--dark);
+  border: 1px solid var(--border);
+}
+
+.toggle-deleted-btn.active {
+  background-color: var(--info);
+  color: var(--white);
+}
+
+.toggle-deleted-btn:hover {
+  background-color: var(--primary-light);
+  color: var(--white);
+}
+
 /* Buttons */
 button {
   cursor: pointer;
@@ -114,6 +131,11 @@ button:active {
   transform: translateY(0);
 }
 
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .add-product-btn {
   background-color: var(--primary);
   color: var(--white);
@@ -130,8 +152,13 @@ button:active {
   color: var(--white);
 }
 
-.delete-btn {
+.delete-btn, .remove-btn {
   background-color: var(--danger);
+  color: var(--white);
+}
+
+.restore-btn {
+  background-color: var(--success);
   color: var(--white);
 }
 
@@ -336,6 +363,11 @@ button:active {
   color: var(--warning);
 }
 
+.deleted-badge {
+  background-color: rgba(108, 117, 125, 0.15);
+  color: var(--text-light);
+}
+
 /* Row Status Colors */
 .expired {
   background-color: rgba(231, 76, 60, 0.05);
@@ -347,6 +379,11 @@ button:active {
 
 .low-stock {
   background-color: rgba(52, 152, 219, 0.05);
+}
+
+.deleted {
+  background-color: rgba(108, 117, 125, 0.05);
+  color: var(--text-light);
 }
 
 /* Alert Notifications */
@@ -514,6 +551,10 @@ button:active {
   font-size: 0.95rem;
 }
 
+.react-datepicker__input-container {
+  width: 100%;
+}
+
 /* Responsive Styles */
 @media (max-width: 992px) {
   .action-controls {
@@ -547,6 +588,10 @@ button:active {
   .form-row {
     flex-direction: column;
   }
+  
+  .action-buttons {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 576px) {
@@ -561,6 +606,15 @@ button:active {
   
   .filter-controls {
     flex-direction: column;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .filter-group label {
+    width: 100%;
+    margin-bottom: 5px;
   }
   
   .modal-container {
@@ -596,4 +650,12 @@ button:active {
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
   font-size: 0.95rem;
+}
+
+/* Category filter select */
+.category-filter {
+  padding: 8px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+  min-width: 180px;
 }
