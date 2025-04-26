@@ -10,13 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Get today's date
         $today = date('Y-m-d');
         
-        // Get total products count
-        $productsSql = "SELECT COUNT(*) as total FROM products";
+        // Get total products count - only active products
+        $productsSql = "SELECT COUNT(*) as total FROM products WHERE is_deleted = 0";
         $productsResult = $conn->query($productsSql);
         $response['total_products'] = $productsResult->fetch_assoc()['total'];
         
-        // Get low stock products count
-        $lowStockSql = "SELECT COUNT(*) as total FROM products WHERE weight <= stock_alert";
+        // Get low stock products count - only active products
+        $lowStockSql = "SELECT COUNT(*) as total FROM products WHERE weight <= stock_alert AND is_deleted = 0";
         $lowStockResult = $conn->query($lowStockSql);
         $response['low_stock_count'] = $lowStockResult->fetch_assoc()['total'];
         
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $response['today_sales_count'] = $todaySales['total'] ?: 0;
         $response['today_sales_amount'] = $todaySales['amount'] ?: 0;
         
-        // Get total inventory value
-        $inventoryValueSql = "SELECT SUM(weight * price) as total FROM products";
+        // Get total inventory value - only active products
+        $inventoryValueSql = "SELECT SUM(weight * price) as total FROM products WHERE is_deleted = 0";
         $inventoryValueResult = $conn->query($inventoryValueSql);
         $response['inventory_value'] = $inventoryValueResult->fetch_assoc()['total'] ?: 0;
         
@@ -48,14 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $response['last_7_days_sales'] = $last7Days;
         
-        // Get top 5 selling products (last 30 days)
+        // Get top 5 selling products (last 30 days) - only products from active inventory
         $topProductsSql = "SELECT 
                             p.type, 
                             SUM(si.quantity) as total_quantity 
                         FROM sale_items si 
                         JOIN products p ON si.product_id = p.product_id 
                         JOIN sales s ON si.sale_id = s.sale_id 
-                        WHERE s.sale_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) 
+                        WHERE s.sale_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+                        AND p.is_deleted = 0
                         GROUP BY p.product_id 
                         ORDER BY total_quantity DESC 
                         LIMIT 5";
@@ -66,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $response['top_products'] = $topProducts;
         
-        // Get low stock products (details for notifications)
+        // Get low stock products (details for notifications) - FIXED to exclude deleted products
         $lowStockDetailsSql = "SELECT 
                                 product_id, 
                                 type, 
@@ -74,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                                 stock_alert 
                             FROM products 
                             WHERE weight <= stock_alert 
+                            AND is_deleted = 0
                             ORDER BY (stock_alert - weight) DESC 
                             LIMIT 10";
         $lowStockDetailsResult = $conn->query($lowStockDetailsSql);

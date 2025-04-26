@@ -26,8 +26,12 @@ const PointOfSales = () => {
   const [quantityModal, setQuantityModal] = useState({
     isOpen: false,
     product: null,
-    quantity: "1"
+    quantity: "1",
+    error: "" // Add error state for quantity modal
   });
+
+  // Cart item errors
+  const [cartErrors, setCartErrors] = useState({});
 
   useEffect(() => {
     fetchProducts();
@@ -72,7 +76,8 @@ const PointOfSales = () => {
     setQuantityModal({
       isOpen: true,
       product,
-      quantity: "1"
+      quantity: "1",
+      error: ""
     });
   };
 
@@ -81,15 +86,28 @@ const PointOfSales = () => {
     setQuantityModal({
       isOpen: false,
       product: null,
-      quantity: "1"
+      quantity: "1",
+      error: ""
     });
   };
 
-  // Handle quantity change in modal
+  // Handle quantity change in modal with inline validation
   const handleQuantityModalChange = (e) => {
+    const value = e.target.value;
+    const qty = parseFloat(value);
+    const product = quantityModal.product;
+    let error = "";
+    
+    if (isNaN(qty) || qty <= 0) {
+      error = "Please enter a valid quantity greater than zero.";
+    } else if (qty > parseFloat(product.weight)) {
+      error = `Not enough stock. Available: ${product.weight} kg`;
+    }
+    
     setQuantityModal(prev => ({
       ...prev,
-      quantity: e.target.value
+      quantity: value,
+      error
     }));
   };
 
@@ -98,28 +116,17 @@ const PointOfSales = () => {
     const product = quantityModal.product;
     const qty = parseFloat(quantityModal.quantity);
     
-    if (isNaN(qty) || qty <= 0) {
-      showNotification("Invalid Input", "Please enter a valid quantity greater than zero.", "error");
-      return;
-    }
-    
-    if (qty > parseFloat(product.weight)) {
-      showNotification(
-        "Insufficient Stock", 
-        `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
-        "warning"
-      );
-      return;
+    if (quantityModal.error) {
+      return; // Don't proceed if there's an error
     }
     
     const existing = cart.find(item => item.product_id === product.product_id);
     if (existing) {
       if (parseFloat(existing.quantity) + qty > parseFloat(product.weight)) {
-        showNotification(
-          "Insufficient Stock", 
-          `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
-          "warning"
-        );
+        setQuantityModal(prev => ({
+          ...prev,
+          error: `Not enough stock. Available: ${product.weight} kg`
+        }));
         return;
       }
       
@@ -142,31 +149,38 @@ const PointOfSales = () => {
 
   const handleRemoveFromCart = (productId) => {
     setCart(cart.filter(item => item.product_id !== productId));
+    
+    // Clear any errors for this item
+    setCartErrors(prevErrors => {
+      const newErrors = {...prevErrors};
+      delete newErrors[productId];
+      return newErrors;
+    });
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, newValue) => {
     const product = products.find(p => p.product_id === productId);
-    const qty = parseFloat(newQuantity);
+    const qty = parseFloat(newValue);
+    let error = "";
     
     if (isNaN(qty) || qty <= 0) {
-      showNotification("Invalid Input", "Please enter a valid quantity greater than zero.", "error");
-      return;
+      error = "Invalid quantity";
+    } else if (qty > parseFloat(product.weight)) {
+      error = `Exceeds stock (${product.weight} kg)`;
     }
     
-    if (qty > parseFloat(product.weight)) {
-      showNotification(
-        "Insufficient Stock", 
-        `Not enough stock for ${product.type}. Available: ${product.weight} kg`, 
-        "warning"
-      );
-      return;
-    }
-    
+    // Update cart item with new quantity
     setCart(cart.map(item =>
       item.product_id === productId 
-        ? { ...item, quantity: qty.toFixed(2) } 
+        ? { ...item, quantity: newValue } 
         : item
     ));
+    
+    // Set or clear error
+    setCartErrors(prev => ({
+      ...prev,
+      [productId]: error
+    }));
   };
 
   // Improved discount handler with better UX
@@ -224,8 +238,15 @@ const PointOfSales = () => {
   const discountAmount = subtotal * (parseFloat(discount || 0) / 100);
   const totalAmount = subtotal - discountAmount;
   const change = parseFloat(amountPaid || 0) - totalAmount > 0 ? parseFloat(amountPaid || 0) - totalAmount : 0;
+  const insufficientPayment = parseFloat(amountPaid || 0) < totalAmount && amountPaid !== "";
 
   const completeSale = async () => {
+    // Check for any quantity errors in cart
+    if (Object.values(cartErrors).some(error => error)) {
+      showNotification("Invalid Quantities", "Please fix the quantity errors before completing the sale", "error");
+      return;
+    }
+    
     if (cart.length === 0) {
       showNotification("Empty Cart", "No products in cart!", "warning");
       return;
@@ -284,6 +305,7 @@ const PointOfSales = () => {
       
       // Reset form
       setCart([]);
+      setCartErrors({});
       setDiscount(0);
       setAmountPaid("");
       fetchProducts(); // Refresh products to get updated stock levels
@@ -324,7 +346,7 @@ const PointOfSales = () => {
       {error && <div className="error-message">{error}</div>}
       {successMessage && <div className="success-message">{successMessage}</div>}
       
-      {/* Modal for notifications */}
+      {/* Modal for notifications - kept intact for sale completion */}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}
@@ -335,7 +357,7 @@ const PointOfSales = () => {
         <p>{modalConfig.message}</p>
       </Modal>
       
-      {/* Modal for quantity input */}
+      {/* Modal for quantity input with inline error message */}
       <Modal
         isOpen={quantityModal.isOpen}
         onClose={closeQuantityModal}
@@ -345,7 +367,8 @@ const PointOfSales = () => {
           {
             label: "Add",
             onClick: confirmAddToCart,
-            type: "primary"
+            type: "primary",
+            disabled: !!quantityModal.error
           },
           {
             label: "Cancel",
@@ -366,8 +389,11 @@ const PointOfSales = () => {
               onChange={handleQuantityModalChange}
               min="0.01"
               step="0.01"
-              className="quantity-input"
+              className={quantityModal.error ? "quantity-input error" : "quantity-input"}
             />
+            {quantityModal.error && (
+              <div className="error-message">{quantityModal.error}</div>
+            )}
           </div>
         </div>
       </Modal>
@@ -462,14 +488,19 @@ const PointOfSales = () => {
                   <tr key={item.product_id}>
                     <td>{item.type}</td>
                     <td>
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        min="0.01"
-                        step="0.01"
-                        onChange={(e) => handleQuantityChange(item.product_id, e.target.value)}
-                        className="quantity-input"
-                      />
+                      <div className="quantity-field">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          min="0.01"
+                          step="0.01"
+                          onChange={(e) => handleQuantityChange(item.product_id, e.target.value)}
+                          className={cartErrors[item.product_id] ? "quantity-input error" : "quantity-input"}
+                        />
+                        {cartErrors[item.product_id] && (
+                          <div className="inline-error">{cartErrors[item.product_id]}</div>
+                        )}
+                      </div>
                     </td>
                     <td>{item.price}</td>
                     <td>{(parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2)}</td>
@@ -505,8 +536,14 @@ const PointOfSales = () => {
                   onChange={handleAmountPaidChange}
                   min="0"
                   step="0.01"
+                  className={insufficientPayment ? "input-error" : ""}
                 />
               </div>
+              {insufficientPayment && (
+                <div className="payment-warning">
+                  Insufficient amount! Need ₱{(totalAmount - parseFloat(amountPaid)).toFixed(2)} more.
+                </div>
+              )}
               {parseFloat(amountPaid || 0) >= totalAmount && cart.length > 0 && (
                 <div className="total-row change">
                   <span>Change:</span>
@@ -518,7 +555,7 @@ const PointOfSales = () => {
             <button 
               className="complete-sale" 
               onClick={completeSale}
-              disabled={isLoading || cart.length === 0 || parseFloat(amountPaid || 0) < totalAmount}
+              disabled={isLoading || cart.length === 0 || parseFloat(amountPaid || 0) < totalAmount || Object.values(cartErrors).some(error => error)}
             >
               {isLoading ? "Processing..." : "Complete Sale"}
             </button>

@@ -152,7 +152,7 @@ button:disabled {
   color: var(--white);
 }
 
-.delete-btn, .remove-btn {
+.remove-btn {
   background-color: var(--danger);
   color: var(--white);
 }
@@ -191,41 +191,6 @@ button:disabled {
   color: var(--text);
   transform: none;
   box-shadow: none;
-}
-
-.btn {
-  padding: 8px 16px;
-  border-radius: var(--border-radius);
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-.primary-btn {
-  background-color: var(--primary);
-  color: var(--white);
-}
-
-.primary-btn:hover {
-  background-color: var(--primary-dark);
-}
-
-.secondary-btn {
-  background-color: var(--light);
-  color: var(--dark);
-  border: 1px solid var(--border);
-}
-
-.secondary-btn:hover {
-  background-color: var(--border);
-}
-
-.danger-btn {
-  background-color: var(--danger);
-  color: var(--white);
-}
-
-.danger-btn:hover {
-  background-color: #c0392b;
 }
 
 /* Form Styles */
@@ -363,6 +328,16 @@ button:disabled {
   color: var(--warning);
 }
 
+.low-stock-badge {
+  background-color: rgba(52, 152, 219, 0.15);
+  color: var(--primary-dark);
+}
+
+.no-stock-badge {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: var(--danger);
+}
+
 .deleted-badge {
   background-color: rgba(108, 117, 125, 0.15);
   color: var(--text-light);
@@ -379,6 +354,10 @@ button:disabled {
 
 .low-stock {
   background-color: rgba(52, 152, 219, 0.05);
+}
+
+.no-stock {
+  background-color: rgba(231, 76, 60, 0.05);
 }
 
 .deleted {
@@ -407,8 +386,13 @@ button:disabled {
   padding: 10px 15px;
 }
 
-.stock-alert-header {
+.low-stock-alert .stock-alert-header {
   background-color: rgba(52, 152, 219, 0.9);
+  color: var(--white);
+}
+
+.no-stock-alert .stock-alert-header {
+  background-color: rgba(231, 76, 60, 0.9);
   color: var(--white);
 }
 
@@ -538,8 +522,38 @@ button:disabled {
   background-color: #f8f9fa;
 }
 
+.modal-actions button {
+  min-width: 100px;
+}
+
+/* Stock Adjustment Modal */
+.stock-adjustment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.stock-adjustment-form p {
+  margin: 0 0 5px 0;
+}
+
+/* Validation Error Modal */
+.validation-errors ul {
+  margin-top: 10px;
+  padding-left: 20px;
+  color: var(--danger);
+}
+
+.validation-errors li {
+  margin-bottom: 5px;
+}
+
 /* DatePicker Custom Styles */
 .react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container {
   width: 100%;
 }
 
@@ -551,8 +565,48 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-.react-datepicker__input-container {
+/* Form Control for DatePicker */
+.form-control {
   width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+}
+
+/* Category filter select */
+.category-filter {
+  padding: 8px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+  min-width: 180px;
+}
+
+/* Error Message */
+.error-message {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: var(--danger);
+  padding: 10px 15px;
+  border-radius: var(--border-radius);
+  margin-bottom: 15px;
+  border-left: 4px solid var(--danger);
+}
+
+/* Modal specific button styles */
+.modal-actions .primary {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.modal-actions .secondary {
+  background-color: var(--light);
+  color: var(--dark);
+  border: 1px solid var(--border);
+}
+
+.modal-actions .danger {
+  background-color: var(--danger);
+  color: var(--white);
 }
 
 /* Responsive Styles */
@@ -620,42 +674,4 @@ button:disabled {
   .modal-container {
     width: 95%;
   }
-}
-
-/* Error Message */
-.error-message {
-  background-color: rgba(231, 76, 60, 0.1);
-  color: var(--danger);
-  padding: 10px 15px;
-  border-radius: var(--border-radius);
-  margin-bottom: 15px;
-  border-left: 4px solid var(--danger);
-}
-
-/* Stock Adjustment Form */
-.stock-adjustment-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.stock-adjustment-form p {
-  margin: 0 0 5px 0;
-}
-
-/* React DatePicker Overrides */
-.form-control {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-}
-
-/* Category filter select */
-.category-filter {
-  padding: 8px;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border);
-  min-width: 180px;
 }

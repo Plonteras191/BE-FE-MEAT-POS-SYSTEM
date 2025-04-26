@@ -644,3 +644,75 @@ tbody tr:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Sale detail modal - Header improvements */
+.sale-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e1e9f1;
+}
+
+.sale-detail-header h2 {
+  color: #0063cc;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Improved header actions container */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Styling for the download button */
+.download-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background-color: #ebf5ff;
+  color: #0063cc;
+  border: 1px solid #0063cc33;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.download-button:hover {
+  background-color: #d9eaff;
+  color: #0051a8;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  color: #0063cc;
+}
+
+/* Mobile responsiveness for header actions */
+@media (max-width: 768px) {
+  .header-actions {
+    gap: 8px;
+  }
+  
+  .download-button,
+  .close-button {
+    padding: 6px;
+  }
+}

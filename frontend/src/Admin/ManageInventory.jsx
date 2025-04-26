@@ -13,21 +13,19 @@ const ManageInventory = () => {
   const [categoryFilter, setCategoryFilter] = useState("all"); // State for category filter
   const [showDeleted, setShowDeleted] = useState(false); // State to toggle showing deleted items
   const [formData, setFormData] = useState({
-    type: "",
-    category_id: "",
-    customCategory: "",
-    supplier: "",
-    weight: "",
-    price: "",
-    expiry_date: "",
-    stock_alert: "10"
+    type: "", category_id: "", customCategory: "", supplier: "", weight: "", price: "", expiry_date: "", stock_alert: "10"
   });
   const [editingId, setEditingId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showStockAlert, setShowStockAlert] = useState(false);
-  const [lowStockItems, setLowStockItems] = useState([]);
+  
+  // Separate state for different alert types
+  const [showLowStockAlert, setShowLowStockAlert] = useState(false);
+  const [showNoStockAlert, setShowNoStockAlert] = useState(false);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+  
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [noStockItems, setNoStockItems] = useState([]);
   const [expiryItems, setExpiryItems] = useState([]);
   
   // Add state for product form modal
@@ -130,18 +128,28 @@ const ManageInventory = () => {
     }
   };
 
-  // Combined function to check both stock and expiry alerts
+  // Updated function to check all three types of alerts
   const checkInventoryAlerts = (productsData = []) => {
     if (!Array.isArray(productsData)) {
       console.error("Products data is not an array:", productsData);
       return;
     }
     
-    // Check low stock (only for active/non-deleted products)
+    // Only check active/non-deleted products
     const activeProducts = productsData.filter(p => p.is_deleted !== '1');
-    const lowStock = activeProducts.filter(p => parseFloat(p.weight) <= parseFloat(p.stock_alert));
+    
+    // Check low stock (greater than 0 but below alert level)
+    const lowStock = activeProducts.filter(p => 
+      parseFloat(p.weight) > 0 && 
+      parseFloat(p.weight) <= parseFloat(p.stock_alert)
+    );
     setLowStockItems(lowStock);
-    setShowStockAlert(lowStock.length > 0);
+    setShowLowStockAlert(lowStock.length > 0);
+    
+    // Check no stock (exactly 0)
+    const noStock = activeProducts.filter(p => parseFloat(p.weight) === 0);
+    setNoStockItems(noStock);
+    setShowNoStockAlert(noStock.length > 0);
     
     // Check expiring products based on status (only for active/non-deleted products)
     const expiringItems = activeProducts.filter(p => p.status === 'expiring');
@@ -490,8 +498,13 @@ const ManageInventory = () => {
     }
   };
 
-  const closeStockAlert = () => {
-    setShowStockAlert(false);
+  // Close alert handlers
+  const closeLowStockAlert = () => {
+    setShowLowStockAlert(false);
+  };
+
+  const closeNoStockAlert = () => {
+    setShowNoStockAlert(false);
   };
 
   const closeExpiryAlert = () => {
@@ -532,19 +545,24 @@ const ManageInventory = () => {
     }
   };
 
-  // Function to get row class based on product status and stock level
+  // Updated function to get row class based on product status and stock level
   const getRowClassName = (product) => {
     if (product.is_deleted === '1') return "deleted";
     if (product.status === 'expired') return "expired";
     if (product.status === 'expiring') return "near-expiry";
+    if (parseFloat(product.weight) === 0) return "no-stock";
     if (parseFloat(product.weight) <= parseFloat(product.stock_alert)) return "low-stock";
     return "";
   };
 
-  // Function to get status badge for the product
+  // Updated function to get status badge for the product
   const getStatusBadge = (product) => {
     if (product.is_deleted === '1') {
       return <span className="status-badge deleted-badge">REMOVED</span>;
+    }
+    
+    if (parseFloat(product.weight) === 0) {
+      return <span className="status-badge no-stock-badge">NO STOCK</span>;
     }
     
     switch (product.status) {
@@ -556,6 +574,9 @@ const ManageInventory = () => {
           ? <span className="status-badge expired-badge">EXPIRED</span>
           : <span className="status-badge expiring-badge">Expiring in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
       default:
+        if (parseFloat(product.weight) <= parseFloat(product.stock_alert)) {
+          return <span className="status-badge low-stock-badge">LOW STOCK</span>;
+        }
         return null;
     }
   };
@@ -571,13 +592,35 @@ const ManageInventory = () => {
     <div className="manage-inventory container">
       <h2>Manage Inventory</h2>
       
-      {/* Stock Alert Notification */}
-      {showStockAlert && (
+      {/* No Stock Alert Notification (RED) */}
+      {showNoStockAlert && (
         <div className="stock-alert-container">
-          <div className="stock-alert">
+          <div className="stock-alert no-stock-alert">
+            <div className="stock-alert-header">
+              <h3>No Stock Alert!</h3>
+              <button onClick={closeNoStockAlert} className="close-btn">×</button>
+            </div>
+            <div className="stock-alert-content">
+              <p>The following products are out of stock:</p>
+              <ul>
+                {noStockItems.map(item => (
+                  <li key={item.product_id}>
+                    {item.type} - Current: {item.weight}kg
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Low Stock Alert Notification (YELLOW) */}
+      {showLowStockAlert && (
+        <div className="stock-alert-container">
+          <div className="stock-alert low-stock-alert">
             <div className="stock-alert-header">
               <h3>Low Stock Alert!</h3>
-              <button onClick={closeStockAlert} className="close-btn">×</button>
+              <button onClick={closeLowStockAlert} className="close-btn">×</button>
             </div>
             <div className="stock-alert-content">
               <p>The following products are below their stock alert level:</p>
@@ -593,7 +636,7 @@ const ManageInventory = () => {
         </div>
       )}
       
-      {/* Expiry Alert Notification */}
+      {/* Expiry Alert Notification (YELLOW) */}
       {showExpiryAlert && (
         <div className="expiry-alert-container">
           <div className="expiry-alert">
@@ -733,6 +776,7 @@ const ManageInventory = () => {
                           <button 
                             className="remove-stock-btn" 
                             onClick={() => openStockAdjustmentModal(p, "remove")}
+                            disabled={parseFloat(p.weight) <= 0}
                           >
                             - Stock
                           </button>
