@@ -1,18 +1,28 @@
 import React, { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import HeaderLogo from "./HeaderLogo";
 import "../styles/Sidebar.css";
 import { Home, Package, DollarSign, PieChart, LogOut } from "lucide-react";
 
 const Sidebar = ({ onLogout }) => {
-  const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = (e) => {
+    e.preventDefault();
+    
     // Call the logout function from props
-    onLogout();
-    // Then navigate to login
-    navigate("/login");
+    if (typeof onLogout === 'function') {
+      onLogout();
+    } else {
+      // Fallback logout functionality if onLogout prop is not provided
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("tokenExpiry");
+      
+      // Redirect to login page
+      window.location.href = "/login";
+    }
   };
 
   // Handle mouse enter/leave for the sidebar

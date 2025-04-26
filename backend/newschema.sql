@@ -82,3 +82,4 @@ INSERT INTO categories (category_name) VALUES
 ('Chicken'),
 ('Seafood'),
 ('Lamb');
+
