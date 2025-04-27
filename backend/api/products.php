@@ -137,16 +137,16 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $category_id = isset($data['category_id']) && $data['category_id'] !== 'custom' && $data['category_id'] !== '' ? 
                   $conn->real_escape_string($data['category_id']) : "NULL";
     $supplier = $conn->real_escape_string($data['supplier']);
-    $weight = $conn->real_escape_string($data['weight']);
     $price = $conn->real_escape_string($data['price']);
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
     
+    // Build the update SQL without including the weight field
+    // This ensures the current weight is preserved during updates
     $sql = "UPDATE products 
             SET type = '$type', 
                 category_id = $category_id, 
                 supplier = '$supplier', 
-                weight = '$weight', 
                 price = '$price', 
                 expiry_date = $expiry_date, 
                 stock_alert = '$stock_alert'
