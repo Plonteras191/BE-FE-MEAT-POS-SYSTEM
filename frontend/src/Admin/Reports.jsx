@@ -2,14 +2,45 @@ import React, { useState, useEffect } from "react";
 import { 
   Download, FileText, Filter, RefreshCw,
   Package, DollarSign, Search, FileSpreadsheet, FileTextIcon,
-  XCircle, ChevronRight, CalendarIcon,
-  ArrowUpDown
+  XCircle, ChevronRight, CalendarIcon, Calendar,
+  ArrowUpDown, ChevronLeft, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import "../styles/Reports.css";
 import apiClient, { reportsApi } from "../services/api";
 import * as XLSX from 'xlsx';
 import { CSVLink } from "react-csv";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
+
+// Pagination component
+const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  if (totalPages <= 1) return null;
+  
+  return (
+    <div className="pagination">
+      <button 
+        className="pagination-button"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft size={16} />
+      </button>
+      
+      <span className="pagination-info">
+        Page {currentPage} of {totalPages}
+      </span>
+      
+      <button 
+        className="pagination-button"
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+      >
+        <ChevronRightIcon size={16} />
+      </button>
+    </div>
+  );
+};
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("sales");
@@ -28,6 +59,15 @@ const Reports = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [dateFilterType, setDateFilterType] = useState('calendar'); // 'calendar' or 'all'
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState({
+    sales: 1,
+    inventory: 1,
+    stock_adjustments: 1
+  });
+  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
     // Fetch categories for filters
@@ -58,10 +98,21 @@ const Reports = () => {
   useEffect(() => {
     console.log("Date or tab changed, fetching new report. Date:", selectedDate);
     fetchReport(activeTab);
-  }, [activeTab, filters, selectedDate]);
+  }, [activeTab, filters, selectedDate, dateFilterType]);
+
+  // Reset current page when changing tabs
+  useEffect(() => {
+    setCurrentPage(prev => ({
+      ...prev,
+      [activeTab]: 1
+    }));
+  }, [activeTab]);
 
   // Function to get date based on filter or calendar selection
   const getDateForReport = () => {
+    if (dateFilterType === 'all') {
+      return {}; // No date filter for "All Data"
+    }
     return { 
       start_date: selectedDate, 
       end_date: selectedDate 
@@ -74,7 +125,7 @@ const Reports = () => {
     setReportData(null); // Clear previous data to ensure re-render
   
     try {
-      // Get date parameters based on selected date
+      // Get date parameters based on selected date and filter type
       const dateParams = getDateForReport();
       
       // Build query parameters based on report type and date range
@@ -137,6 +188,7 @@ const Reports = () => {
   const handleResetFilters = () => {
     setFilters({ categoryId: '', receiptNo: '', productId: '', reason: '' });
     setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+    setDateFilterType('calendar');
     // Fetch fresh data after resetting filters
     setTimeout(() => fetchReport(activeTab), 0);
   };
@@ -224,6 +276,9 @@ const Reports = () => {
 
   // Helper function to get date label for reports
   const getDateLabel = () => {
+    if (dateFilterType === 'all') {
+      return 'All Data';
+    }
     return `Selected: ${format(parseISO(selectedDate), 'MMM dd, yyyy')}`;
   };
 
@@ -249,6 +304,26 @@ const Reports = () => {
       parseFloat(sale.amount_paid) - parseFloat(sale.total_amount);
   };
 
+  // Pagination handler
+  const handlePageChange = (tab, newPage) => {
+    setCurrentPage(prev => ({
+      ...prev,
+      [tab]: newPage
+    }));
+  };
+
+  // Get paginated data
+  const getPaginatedData = (data, tab) => {
+    if (!data || !Array.isArray(data)) return [];
+    
+    const startIndex = (currentPage[tab] - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    
+    return data.slice(startIndex, endIndex);
+  };
+
+  
+
   // Dynamic component rendering based on report type
   const renderReportContent = () => {
     if (isLoading) return <div className="loading-indicator">Loading report data...</div>;
@@ -261,13 +336,24 @@ const Reports = () => {
           data={reportData} 
           onSaleClick={fetchSaleDetails}
           dateLabel={getDateLabel()}
+          currentPage={currentPage.sales}
+          onPageChange={(newPage) => handlePageChange('sales', newPage)}
+          itemsPerPage={ITEMS_PER_PAGE}
         />;
       case 'inventory':
-        return <InventoryReport data={reportData} />;
+        return <InventoryReport 
+          data={reportData}
+          currentPage={currentPage.inventory}
+          onPageChange={(newPage) => handlePageChange('inventory', newPage)}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />;
       case 'stock_adjustments':
         return <StockAdjustmentsReport 
           data={reportData}
           dateLabel={getDateLabel()}
+          currentPage={currentPage.stock_adjustments}
+          onPageChange={(newPage) => handlePageChange('stock_adjustments', newPage)}
+          itemsPerPage={ITEMS_PER_PAGE}
         />;
       default:
         return <div>Select a report type</div>;
@@ -378,20 +464,32 @@ const Reports = () => {
       
       <div className="date-filter-container">
         <div className="date-filter-buttons">
-          <button className="date-filter-button active">
+          <button 
+            className={`date-filter-button ${dateFilterType === 'calendar' ? 'active' : ''}`}
+            onClick={() => setDateFilterType('calendar')}
+          >
             <CalendarIcon size={16} />
             Calendar
           </button>
+          <button 
+            className={`date-filter-button ${dateFilterType === 'all' ? 'active' : ''}`}
+            onClick={() => setDateFilterType('all')}
+          >
+            <FileText size={16} />
+            All Data
+          </button>
         </div>
         
-        <div className="calendar-picker">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={handleDateSelect}
-            className="date-picker"
-          />
-        </div>
+        {dateFilterType === 'calendar' && (
+          <div className="calendar-picker">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handleDateSelect}
+              className="date-picker"
+            />
+          </div>
+        )}
       </div>
 
       <div className="filter-container">
@@ -411,7 +509,7 @@ const Reports = () => {
       <div className="report-actions">
         <button 
           className="export-button"
-          onClick={() => downloadExcel(prepareCSVData(), `${activeTab}_report_${selectedDate}`)}
+          onClick={() => downloadExcel(prepareCSVData(), `${activeTab}_report_${dateFilterType === 'calendar' ? selectedDate : 'all_data'}`)}
           disabled={!reportData}
         >
           <FileSpreadsheet size={16} />
@@ -420,7 +518,7 @@ const Reports = () => {
         
         <CSVLink
           data={prepareCSVData()}
-          filename={`${activeTab}_report_${format(parseISO(selectedDate), 'yyyy-MM-dd')}.csv`}
+          filename={`${activeTab}_report_${dateFilterType === 'calendar' ? format(parseISO(selectedDate), 'yyyy-MM-dd') : 'all_data'}.csv`}
           className="export-button"
           target="_blank"
           disabled={!reportData}
@@ -542,9 +640,11 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 };
 
-// Sales Report Component with date filtering
-const SalesReport = ({ data, onSaleClick, dateLabel }) => {
+// Sales Report Component with date filtering and pagination
+const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
+
+  const paginatedSales = getPaginatedData(data.detailed_sales || [], currentPage, itemsPerPage);
 
   return (
     <div className="sales-report">
@@ -601,8 +701,8 @@ const SalesReport = ({ data, onSaleClick, dateLabel }) => {
             </tr>
           </thead>
           <tbody>
-            {data.detailed_sales && data.detailed_sales.length > 0 ? (
-              data.detailed_sales.map((sale) => (
+            {paginatedSales && paginatedSales.length > 0 ? (
+              paginatedSales.map((sale) => (
                 <tr key={sale.sale_id} onClick={() => onSaleClick(sale.sale_id)}>
                   <td>{sale.receipt_no}</td>
                   <td>{format(parseISO(sale.sale_date), 'MMM dd, yyyy h:mm a')}</td>
@@ -612,7 +712,7 @@ const SalesReport = ({ data, onSaleClick, dateLabel }) => {
                       e.stopPropagation(); // Prevent row click
                       onSaleClick(sale.sale_id);
                     }}>
-                      <ChevronRight size={16} />
+                      <ChevronRightIcon size={16} />
                       View
                     </button>
                   </td>
@@ -625,14 +725,38 @@ const SalesReport = ({ data, onSaleClick, dateLabel }) => {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination for Sales */}
+        {data.detailed_sales && data.detailed_sales.length > 0 && (
+          <div className="pagination-container">
+            <Pagination 
+              totalItems={data.detailed_sales.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// Inventory Report Component
-const InventoryReport = ({ data }) => {
+// Helper function to get paginated data
+const getPaginatedData = (data, currentPage, itemsPerPage) => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  
+  return data.slice(startIndex, endIndex);
+};
+
+// Inventory Report Component with pagination
+const InventoryReport = ({ data, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
+
+  const paginatedProducts = getPaginatedData(data.products || [], currentPage, itemsPerPage);
 
   return (
     <div className="inventory-report">
@@ -668,8 +792,8 @@ const InventoryReport = ({ data }) => {
             </tr>
           </thead>
           <tbody>
-            {data.products && data.products.length > 0 ? (
-              data.products.map((product) => (
+            {paginatedProducts && paginatedProducts.length > 0 ? (
+              paginatedProducts.map((product) => (
                 <tr 
                   key={product.product_id} 
                   className={parseFloat(product.current_stock) <= parseFloat(product.stock_alert) ? 'low-stock' : ''}
@@ -698,14 +822,28 @@ const InventoryReport = ({ data }) => {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination for Inventory */}
+        {data.products && data.products.length > 0 && (
+          <div className="pagination-container">
+            <Pagination 
+              totalItems={data.products.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// Stock Adjustments Report Component
-const StockAdjustmentsReport = ({ data, dateLabel }) => {
+// Stock Adjustments Report Component with pagination
+const StockAdjustmentsReport = ({ data, dateLabel, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
+  
+  const paginatedAdjustments = getPaginatedData(data.adjustments || [], currentPage, itemsPerPage);
 
   return (
     <div className="stock-adjustments-report">
@@ -780,8 +918,8 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
               </tr>
           </thead>
           <tbody>
-          {data.adjustments && data.adjustments.length > 0 ? (
-              data.adjustments.map((adjustment) => (
+          {paginatedAdjustments && paginatedAdjustments.length > 0 ? (
+              paginatedAdjustments.map((adjustment) => (
                 <tr key={adjustment.adjustment_id}>
                   <td>{adjustment.adjustment_id}</td>
                   <td>{adjustment.product_name}</td>
@@ -802,6 +940,18 @@ const StockAdjustmentsReport = ({ data, dateLabel }) => {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination for Stock Adjustments */}
+        {data.adjustments && data.adjustments.length > 0 && (
+          <div className="pagination-container">
+            <Pagination 
+              totalItems={data.adjustments.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

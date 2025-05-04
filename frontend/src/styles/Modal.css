@@ -1,0 +1,221 @@
+/* Modal.css */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .modal-container {
+    background-color: white;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    animation: slideIn 0.3s ease;
+    overflow: hidden;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .modal-header h3 {
+    margin: 0;
+    font-weight: 500;
+    font-size: 18px;
+    color: #37474f;
+  }
+  
+  .modal-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #78909c;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+  }
+  
+  .modal-header .close-btn:hover {
+    background-color: #f5f5f5;
+    color: #455a64;
+  }
+  
+  .modal-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 16px 20px;
+    gap: 10px;
+    border-top: 1px solid #e0e0e0;
+    background-color: #fafafa;
+  }
+  
+  /* Button styles */
+  .modal-actions .btn {
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    font-size: 14px;
+  }
+  
+  .modal-actions .primary-btn {
+    background-color: #1976d2;
+    color: white;
+  }
+  
+  .modal-actions .primary-btn:hover:not(:disabled) {
+    background-color: #1565c0;
+  }
+  
+  .modal-actions .secondary-btn {
+    background-color: #e0e0e0;
+    color: #424242;
+  }
+  
+  .modal-actions .secondary-btn:hover:not(:disabled) {
+    background-color: #bdbdbd;
+  }
+  
+  .modal-actions .danger-btn {
+    background-color: #ef5350;
+    color: white;
+  }
+  
+  .modal-actions .danger-btn:hover:not(:disabled) {
+    background-color: #d32f2f;
+  }
+  
+  .modal-actions .warning-btn {
+    background-color: #ff9800;
+    color: white;
+  }
+  
+  .modal-actions .warning-btn:hover:not(:disabled) {
+    background-color: #f57c00;
+  }
+  
+  .modal-actions .success-btn {
+    background-color: #4caf50;
+    color: white;
+  }
+  
+  .modal-actions .success-btn:hover:not(:disabled) {
+    background-color: #388e3c;
+  }
+  
+  .modal-actions .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  /* Modal types */
+  .info-modal .modal-header {
+    border-top: 4px solid #1976d2;
+  }
+  
+  .warning-modal .modal-header {
+    border-top: 4px solid #ff9800;
+  }
+  
+  .error-modal .modal-header {
+    border-top: 4px solid #ef5350;
+  }
+  
+  .success-modal .modal-header {
+    border-top: 4px solid #4caf50;
+  }
+  
+  .form-modal .modal-header {
+    border-top: 4px solid #1976d2;
+  }
+  
+  /* Responsive design */
+  @media screen and (max-width: 768px) {
+    .modal-container {
+      max-width: 100%;
+      margin: 0 10px;
+    }
+    
+    .modal-actions {
+      flex-wrap: wrap;
+    }
+    
+    .modal-actions .btn {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+    }
+  }
+  
+  @media screen and (max-width: 480px) {
+    .modal-actions {
+      flex-direction: column;
+    }
+    
+    .modal-actions .btn {
+      width: 100%;
+    }
+  }
+  
+  /* Forms inside modal */
+  .modal-content .inventory-form,
+  .modal-content .stock-adjustment-form {
+    margin-bottom: 0;
+  }
+  
+  /* List styling inside modals */
+  .modal-content ul {
+    margin: 10px 0;
+    padding-left: 20px;
+  }
+  
+  .modal-content li {
+    margin-bottom: 5px;
+  }
+  
+  /* Validation error styling */
+  .error-modal .modal-content ul {
+    color: #d32f2f;
+  }
