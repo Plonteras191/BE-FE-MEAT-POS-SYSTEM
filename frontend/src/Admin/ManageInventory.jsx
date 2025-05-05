@@ -37,7 +37,8 @@ const ManageInventory = () => {
         product: null,
         reason: "",
         quantity: "1",
-        notes: ""
+        notes: "",
+        error: ""
     });
     const [validationErrors, setValidationErrors] = useState([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
@@ -307,22 +308,39 @@ const ManageInventory = () => {
     const handleStockAdjustmentChange = (e) => {
         const { name, value } = e.target;
         if (name === "quantity" && value.startsWith('-')) return;
-        setStockAdjustmentModal(prev => ({ ...prev, [name]: value }));
+        setStockAdjustmentModal(prev => ({
+            ...prev,
+            [name]: value,
+            error: "" // Clear the error when the user types
+        }));
     };
 
     const submitStockAdjustment = async () => {
         const { product, reason, quantity, notes } = stockAdjustmentModal;
         const quantityNum = parseFloat(quantity);
+    
+        // Check if quantity is invalid
         if (isNaN(quantityNum) || quantityNum <= 0) {
-            showModal({ title: "Validation Error", content: "Quantity must be a positive number greater than 0.", type: "error" });
+            setStockAdjustmentModal(prev => ({
+                ...prev,
+                error: "Quantity must be a positive number greater than 0."
+            }));
             return;
         }
+    
+        // Check if removing more stock than available
         if (reason === "remove" && quantityNum > parseFloat(product.weight)) {
-            showModal({ title: "Stock Error", content: `Cannot remove ${quantity}kg as the current stock is only ${product.weight}kg.`, type: "error" });
+            setStockAdjustmentModal(prev => ({
+                ...prev,
+                error: `Cannot remove ${quantity}kg as the current stock is only ${product.weight}kg.`
+            }));
             return;
         }
-        setStockAdjustmentModal(prev => ({ ...prev, isOpen: false }));
+    
+        // If no errors, clear the error and proceed with submission
+        setStockAdjustmentModal(prev => ({ ...prev, error: "" }));
         setIsLoading(true);
+    
         try {
             await stockAdjustmentsApi.create({
                 product_id: product.product_id,
@@ -331,12 +349,27 @@ const ManageInventory = () => {
                 notes: notes || null
             });
             fetchProducts();
-            showModal({ title: "Success", content: `Stock ${reason === "add" ? "added" : "removed"} successfully!`, type: "success" });
-            setStockAdjustmentModal({ isOpen: false, product: null, reason: "", quantity: "1", notes: "" });
+            showModal({
+                title: "Success",
+                content: `Stock ${reason === "add" ? "added" : "removed"} successfully!`,
+                type: "success"
+            });
+            setStockAdjustmentModal({
+                isOpen: false,
+                product: null,
+                reason: "",
+                quantity: "1",
+                notes: "",
+                error: ""
+            });
         } catch (err) {
-            showModal({ title: "Error", content: err.response?.data?.error || `Failed to ${reason} stock`, type: "error" });
+            showModal({
+                title: "Error",
+                content: err.response?.data?.error || `Failed to ${reason} stock`,
+                type: "error"
+            });
             console.error(err);
-            setStockAdjustmentModal({ isOpen: false, product: null, reason: "", quantity: "1", notes: "" });
+            setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" }));
         } finally {
             setIsLoading(false);
         }
@@ -669,24 +702,53 @@ const ManageInventory = () => {
                 </div>
             </Modal>
 
-            <Modal isOpen={stockAdjustmentModal.isOpen} onClose={() => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false }))} title={`${stockAdjustmentModal.reason === "add" ? "Add to" : "Remove from"} Stock`} type="form" actionButtons={[
-                { label: "Cancel", type: "secondary", onClick: () => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false })), disabled: isLoading },
-                { label: isLoading ? "Processing..." : "Submit Adjustment", type: "primary", onClick: submitStockAdjustment, disabled: isLoading || !stockAdjustmentModal.quantity || parseFloat(stockAdjustmentModal.quantity) <= 0 }
-            ]}>
-                <form className="stock-adjustment-form" onSubmit={(e) => { e.preventDefault(); submitStockAdjustment(); }}>
-                    <p><strong>Product:</strong> {stockAdjustmentModal.product?.type}</p>
-                    <p><strong>Current Stock:</strong> {stockAdjustmentModal.product?.weight} kg</p>
-                    <div className="form-group">
-                        <label htmlFor="quantity">Quantity to {stockAdjustmentModal.reason} (kg) *:</label>
-                        <input type="number" id="quantity" name="quantity" min="0.01" step="0.01" placeholder="e.g., 2.5" value={stockAdjustmentModal.quantity} onChange={handleStockAdjustmentChange} required disabled={isLoading} autoFocus />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="notes">Notes (optional):</label>
-                        <textarea id="notes" name="notes" placeholder="Reason for adjustment (e.g., Spoilage, New delivery, Correction)" value={stockAdjustmentModal.notes} onChange={handleStockAdjustmentChange} rows="3" disabled={isLoading}></textarea>
-                    </div>
-                    <p><small>* Required fields</small></p>
-                </form>
-            </Modal>
+            <Modal
+    isOpen={stockAdjustmentModal.isOpen}
+    onClose={() => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" }))}
+    title={`${stockAdjustmentModal.reason === "add" ? "Add to" : "Remove from"} Stock`}
+    type="form"
+    actionButtons={[
+        { label: "Cancel", type: "secondary", onClick: () => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" })), disabled: isLoading },
+        { label: isLoading ? "Processing..." : "Submit Adjustment", type: "primary", onClick: submitStockAdjustment, disabled: isLoading || !stockAdjustmentModal.quantity || parseFloat(stockAdjustmentModal.quantity) <= 0 }
+    ]}
+>
+    <form className="stock-adjustment-form" onSubmit={(e) => { e.preventDefault(); submitStockAdjustment(); }}>
+        <p><strong>Product:</strong> {stockAdjustmentModal.product?.type}</p>
+        <p><strong>Current Stock:</strong> {stockAdjustmentModal.product?.weight} kg</p>
+        <div className="form-group">
+            <label htmlFor="quantity">Quantity to {stockAdjustmentModal.reason} (kg) *:</label>
+            <input
+                type="number"
+                id="quantity"
+                name="quantity"
+                min="0.01"
+                step="0.01"
+                placeholder="e.g., 2.5"
+                value={stockAdjustmentModal.quantity}
+                onChange={handleStockAdjustmentChange}
+                required
+                disabled={isLoading}
+                autoFocus
+            />
+            {stockAdjustmentModal.error && (
+                <div className="error-message">{stockAdjustmentModal.error}</div>
+            )}
+        </div>
+        <div className="form-group">
+            <label htmlFor="notes">Notes (optional):</label>
+            <textarea
+                id="notes"
+                name="notes"
+                placeholder="Reason for adjustment (e.g., Spoilage, New delivery, Correction)"
+                value={stockAdjustmentModal.notes}
+                onChange={handleStockAdjustmentChange}
+                rows="3"
+                disabled={isLoading}
+            />
+        </div>
+        <p><small>* Required fields</small></p>
+    </form>
+</Modal>
         </div>
     );
 };

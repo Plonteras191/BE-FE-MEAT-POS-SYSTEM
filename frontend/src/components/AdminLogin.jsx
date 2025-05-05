@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../styles/AdminLogin.css";
+import apiClient, { authApi } from "../services/api";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -10,13 +11,26 @@ const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Check if already logged in
+  useEffect(() => {
+    if (localStorage.getItem("isAuthenticated") === "true") {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post("http://localhost/MEAT_POS/backend/api/auth.php", {
+      const response = await authApi.login({
         username,
         password
       });
@@ -29,18 +43,24 @@ const AdminLogin = () => {
         localStorage.setItem("tokenExpiry", response.data.data.expiry);
         
         // Update Axios default headers for authenticated requests
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.data.token}`;
+        apiClient.defaults.headers.common["Authorization"] = `Bearer ${response.data.data.token}`;
         
         console.log("Authentication successful, redirecting to dashboard...");
         
-        // Force reload to ensure the app recognizes the authentication state
+        // Redirect to dashboard
         window.location.href = "/dashboard";
       } else {
         setError(response.data.message || "Authentication failed");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError(error.response?.data?.message || "Authentication failed. Please try again.");
+      if (error.response?.status === 401) {
+        setError("Invalid username or password");
+      } else if (error.response?.status === 429) {
+        setError("Too many login attempts. Please try again later.");
+      } else {
+        setError(error.response?.data?.message || "Server error. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +69,7 @@ const AdminLogin = () => {
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
-        <h2>MegaFarm POS System</h2>
+        <h2>MegaFarm</h2>
         <h3>Admin Login</h3>
         
         {error && <div className="error-message">{error}</div>}
@@ -61,7 +81,10 @@ const AdminLogin = () => {
             id="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter your username"
+            autoComplete="username"
             required
+            autoFocus
           />
         </div>
         
@@ -72,6 +95,8 @@ const AdminLogin = () => {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            autoComplete="current-password"
             required
           />
         </div>

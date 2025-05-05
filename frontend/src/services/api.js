@@ -24,6 +24,25 @@ export const productsApi = {
   updateStatuses: () => apiClient.patch("/products.php?action=update_status")
 };
 
+
+// Auth API
+export const authApi = {
+  login: (credentials) => apiClient.post("/auth.php", credentials),
+  logout: () => {
+    // Clear auth headers
+    delete apiClient.defaults.headers.common["Authorization"];
+    // Local cleanup
+    return Promise.resolve(true);
+  },
+  checkAuth: () => {
+    const token = localStorage.getItem("token");
+    if (!token) return Promise.resolve({ data: { success: false } });
+    
+    return apiClient.post("/auth.php", { action: "verify_token", token });
+  }
+};
+
+
 // Categories API
 export const categoriesApi = {
   getAll: () => apiClient.get("/categories.php"),
