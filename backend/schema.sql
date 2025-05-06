@@ -1,5 +1,3 @@
--- DB NAME: meat_pos_db
-
 -- Categories Table - Stores different meat categories
 CREATE TABLE categories (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -18,7 +16,8 @@ CREATE TABLE products (
     stock_alert DECIMAL(10,2) DEFAULT 10.00,    -- Alert threshold
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,   -- Soft delete flag: 0 = active, 1 = deleted
     -- Status field removed as it can be derived from expiry_date
-    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+    FOREIGN KEY (category_id) REFERENCES categories(category_id),
+    UNIQUE KEY unique_product_supplier (type, supplier)  -- Added unique constraint
 );
 
 -- Sales Table - Stores sales transactions

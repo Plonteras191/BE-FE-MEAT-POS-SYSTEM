@@ -21,9 +21,11 @@ const ManageInventory = () => {
     const [showLowStockAlert, setShowLowStockAlert] = useState(false);
     const [showNoStockAlert, setShowNoStockAlert] = useState(false);
     const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+    const [showExpiredAlert, setShowExpiredAlert] = useState(false);
     const [lowStockItems, setLowStockItems] = useState([]);
     const [noStockItems, setNoStockItems] = useState([]);
-    const [expiryItems, setExpiryItems] = useState([]);
+    const [expiringItems, setExpiringItems] = useState([]);
+    const [expiredItems, setExpiredItems] = useState([]);
     const [showProductForm, setShowProductForm] = useState(false);
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
@@ -41,7 +43,7 @@ const ManageInventory = () => {
         error: ""
     });
     const [validationErrors, setValidationErrors] = useState([]);
-    const [showValidationModal, setShowValidationModal] = useState(false);
+    const [formError, setFormError] = useState(null);
     const EXPIRY_WARNING_DAYS = 7;
     const getDefaultExpiryDate = () => addDays(new Date(), 2);
 
@@ -129,9 +131,18 @@ const ManageInventory = () => {
         const noStock = activeProducts.filter(p => parseFloat(p.weight) === 0);
         setNoStockItems(noStock);
         setShowNoStockAlert(noStock.length > 0);
-        const expiringItems = activeProducts.filter(p => p.status === 'expiring');
-        setExpiryItems(expiringItems);
-        setShowExpiryAlert(expiringItems.length > 0);
+        const expiring = activeProducts.filter(p => {
+            const daysLeft = getDaysUntilExpiry(p.expiry_date);
+            return daysLeft > 0 && daysLeft <= EXPIRY_WARNING_DAYS;
+        });
+        const expired = activeProducts.filter(p => {
+            const daysLeft = getDaysUntilExpiry(p.expiry_date);
+            return daysLeft <= 0;
+        });
+        setExpiringItems(expiring);
+        setExpiredItems(expired);
+        setShowExpiryAlert(expiring.length > 0);
+        setShowExpiredAlert(expired.length > 0);
     };
 
     const fetchCategories = async () => {
@@ -147,12 +158,7 @@ const ManageInventory = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         if ((name === "weight" || name === "price" || name === "stock_alert") && value !== "" && parseFloat(value) < 0) {
-            showModal({
-                title: "Validation Error",
-                content: `${name.charAt(0).toUpperCase() + name.slice(1)} cannot be negative.`,
-                type: "error"
-            });
-            return;
+            return; // Prevent negative values
         }
         setFormData(prev => ({
             ...prev,
@@ -183,16 +189,13 @@ const ManageInventory = () => {
         if (!formData.supplier || !formData.supplier.trim()) errors.push("Supplier is required.");
         if (!formData.category_id) errors.push("Category must be selected.");
         else if (formData.category_id === "custom" && (!formData.customCategory || !formData.customCategory.trim())) errors.push("Custom category name is required when 'Other' is selected.");
-        if (errors.length > 0) {
-            setValidationErrors(errors);
-            setShowValidationModal(true);
-            return false;
-        }
-        return true;
+        setValidationErrors(errors);
+        return errors.length === 0;
     };
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
+        setFormError(null); // Reset form error
         if (!validateForm()) return;
         setIsLoading(true);
         try {
@@ -209,7 +212,7 @@ const ManageInventory = () => {
             closeProductForm();
             fetchProducts();
         } catch (err) {
-            showModal({ title: "Error", content: err.response?.data?.message || err.response?.data?.error || "An error occurred", type: "error" });
+            setFormError(err.response?.data?.message || err.response?.data?.error || "An error occurred");
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -337,7 +340,6 @@ const ManageInventory = () => {
             return;
         }
     
-        // If no errors, clear the error and proceed with submission
         setStockAdjustmentModal(prev => ({ ...prev, error: "" }));
         setIsLoading(true);
     
@@ -388,6 +390,7 @@ const ManageInventory = () => {
         });
         setEditingId(null);
         setValidationErrors([]);
+        setFormError(null);
     };
 
     const formatDate = (dateString) => {
@@ -404,6 +407,7 @@ const ManageInventory = () => {
     const closeLowStockAlert = () => setShowLowStockAlert(false);
     const closeNoStockAlert = () => setShowNoStockAlert(false);
     const closeExpiryAlert = () => setShowExpiryAlert(false);
+    const closeExpiredAlert = () => setShowExpiredAlert(false);
 
     const showModal = (config) => setModalConfig({ isOpen: true, ...config });
     const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
@@ -502,7 +506,7 @@ const ManageInventory = () => {
 
             {showExpiryAlert && (
                 <div className="expiry-alert-container">
-                    <div className="expiry-alert">
+                    <div className="expiry-alert expiring-alert">
                         <div className="expiry-alert-header">
                             <h3>Products Expiring Soon!</h3>
                             <button onClick={closeExpiryAlert} className="close-btn">×</button>
@@ -510,19 +514,31 @@ const ManageInventory = () => {
                         <div className="expiry-alert-content">
                             <p>The following products will expire within {EXPIRY_WARNING_DAYS} days:</p>
                             <ul>
-                                {expiryItems.map(item => {
+                                {expiringItems.map(item => {
                                     const daysLeft = getDaysUntilExpiry(item.expiry_date);
-                                    if (daysLeft !== null && daysLeft > 0) {
-                                        return (
-                                            <li key={item.product_id}>{item.type} - Expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''} ({formatDate(item.expiry_date)})</li>
-                                        );
-                                    } else if (daysLeft !== null && daysLeft <= 0) {
-                                        return (
-                                            <li key={item.product_id} className="expired-item">{item.type} - Expired on {formatDate(item.expiry_date)}</li>
-                                        );
-                                    }
-                                    return null;
+                                    return (
+                                        <li key={item.product_id}>{item.type} - Expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''} ({formatDate(item.expiry_date)})</li>
+                                    );
                                 })}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showExpiredAlert && (
+                <div className="expiry-alert-container">
+                    <div className="expiry-alert expired-alert">
+                        <div className="expiry-alert-header">
+                            <h3>Expired Products!</h3>
+                            <button onClick={closeExpiredAlert} className="close-btn">×</button>
+                        </div>
+                        <div className="expiry-alert-content">
+                            <p>The following products have expired:</p>
+                            <ul>
+                                {expiredItems.map(item => (
+                                    <li key={item.product_id}>{item.type} - Expired on {formatDate(item.expiry_date)}</li>
+                                ))}
                             </ul>
                         </div>
                     </div>
@@ -638,6 +654,17 @@ const ManageInventory = () => {
                     { label: isLoading ? "Processing..." : (editingId ? "Update Details" : "Add Product"), type: "primary", onClick: handleSubmit, isSubmit: true, disabled: isLoading }
                 ]}
             >
+                <div className="form-errors">
+                    {formError && <div className="error-message">{formError}</div>}
+                    {validationErrors.length > 0 && (
+                        <div className="validation-errors">
+                            <p>Please correct the following errors:</p>
+                            <ul>
+                                {validationErrors.map((error, index) => <li key={index}>{error}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                </div>
                 <form className="inventory-form" onSubmit={handleSubmit} noValidate>
                     <div className="form-row">
                         <div className="form-group">
@@ -695,60 +722,53 @@ const ManageInventory = () => {
                 <div>{modalConfig.content}</div>
             </Modal>
 
-            <Modal isOpen={showValidationModal} onClose={() => setShowValidationModal(false)} title="Validation Errors" type="error" actionButtons={[{ label: "Close", type: "primary", onClick: () => setShowValidationModal(false) }]}>
-                <div>
-                    <p>Please correct the following errors before submitting:</p>
-                    <ul>{validationErrors.map((error, index) => <li key={index}>{error}</li>)}</ul>
-                </div>
-            </Modal>
-
             <Modal
-    isOpen={stockAdjustmentModal.isOpen}
-    onClose={() => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" }))}
-    title={`${stockAdjustmentModal.reason === "add" ? "Add to" : "Remove from"} Stock`}
-    type="form"
-    actionButtons={[
-        { label: "Cancel", type: "secondary", onClick: () => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" })), disabled: isLoading },
-        { label: isLoading ? "Processing..." : "Submit Adjustment", type: "primary", onClick: submitStockAdjustment, disabled: isLoading || !stockAdjustmentModal.quantity || parseFloat(stockAdjustmentModal.quantity) <= 0 }
-    ]}
->
-    <form className="stock-adjustment-form" onSubmit={(e) => { e.preventDefault(); submitStockAdjustment(); }}>
-        <p><strong>Product:</strong> {stockAdjustmentModal.product?.type}</p>
-        <p><strong>Current Stock:</strong> {stockAdjustmentModal.product?.weight} kg</p>
-        <div className="form-group">
-            <label htmlFor="quantity">Quantity to {stockAdjustmentModal.reason} (kg) *:</label>
-            <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                min="0.01"
-                step="0.01"
-                placeholder="e.g., 2.5"
-                value={stockAdjustmentModal.quantity}
-                onChange={handleStockAdjustmentChange}
-                required
-                disabled={isLoading}
-                autoFocus
-            />
-            {stockAdjustmentModal.error && (
-                <div className="error-message">{stockAdjustmentModal.error}</div>
-            )}
-        </div>
-        <div className="form-group">
-            <label htmlFor="notes">Notes (optional):</label>
-            <textarea
-                id="notes"
-                name="notes"
-                placeholder="Reason for adjustment (e.g., Spoilage, New delivery, Correction)"
-                value={stockAdjustmentModal.notes}
-                onChange={handleStockAdjustmentChange}
-                rows="3"
-                disabled={isLoading}
-            />
-        </div>
-        <p><small>* Required fields</small></p>
-    </form>
-</Modal>
+                isOpen={stockAdjustmentModal.isOpen}
+                onClose={() => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" }))}
+                title={`${stockAdjustmentModal.reason === "add" ? "Add to" : "Remove from"} Stock`}
+                type="form"
+                actionButtons={[
+                    { label: "Cancel", type: "secondary", onClick: () => setStockAdjustmentModal(prev => ({ ...prev, isOpen: false, error: "" })), disabled: isLoading },
+                    { label: isLoading ? "Processing..." : "Submit Adjustment", type: "primary", onClick: submitStockAdjustment, disabled: isLoading || !stockAdjustmentModal.quantity || parseFloat(stockAdjustmentModal.quantity) <= 0 }
+                ]}
+            >
+                <form className="stock-adjustment-form" onSubmit={(e) => { e.preventDefault(); submitStockAdjustment(); }}>
+                    <p><strong>Product:</strong> {stockAdjustmentModal.product?.type}</p>
+                    <p><strong>Current Stock:</strong> {stockAdjustmentModal.product?.weight} kg</p>
+                    <div className="form-group">
+                        <label htmlFor="quantity">Quantity to {stockAdjustmentModal.reason} (kg) *:</label>
+                        <input
+                            type="number"
+                            id="quantity"
+                            name="quantity"
+                            min="0.01"
+                            step="0.01"
+                            placeholder="e.g., 2.5"
+                            value={stockAdjustmentModal.quantity}
+                            onChange={handleStockAdjustmentChange}
+                            required
+                            disabled={isLoading}
+                            autoFocus
+                        />
+                        {stockAdjustmentModal.error && (
+                            <div className="error-message">{stockAdjustmentModal.error}</div>
+                        )}
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="notes">Notes (optional):</label>
+                        <textarea
+                            id="notes"
+                            name="notes"
+                            placeholder="Reason for adjustment (e.g., Spoilage, New delivery, Correction)"
+                            value={stockAdjustmentModal.notes}
+                            onChange={handleStockAdjustmentChange}
+                            rows="3"
+                            disabled={isLoading}
+                        />
+                    </div>
+                    <p><small>* Required fields</small></p>
+                </form>
+            </Modal>
         </div>
     );
 };

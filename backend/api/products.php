@@ -8,10 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['id'])) {
         $productId = $conn->real_escape_string($_GET['id']);
         $sql = "SELECT p.*, c.category_name, ps.status 
-                FROM products p 
-                LEFT JOIN categories c ON p.category_id = c.category_id 
-                LEFT JOIN product_status ps ON p.product_id = ps.product_id
-                WHERE p.product_id = $productId AND p.is_deleted = 0";
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.category_id 
+        LEFT JOIN product_status ps ON p.product_id = ps.product_id
+        WHERE p.product_id = ? AND p.is_deleted = 0";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $_GET['id']); // 'i' for integer
+        $stmt->execute();
+        $result = $stmt->get_result();
     } else {
         // Only show non-deleted products by default
         $sql = "SELECT p.*, c.category_name, ps.status 
@@ -75,11 +79,24 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    // Prepare product data for insertion
+    // Check for duplicate product name with same supplier
     $type = $conn->real_escape_string($data['type']);
+    $supplier = $conn->real_escape_string($data['supplier']);
+    
+    $checkDuplicateSql = "SELECT COUNT(*) as count FROM products 
+                           WHERE type = '$type' AND supplier = '$supplier' AND is_deleted = 0";
+    $duplicateResult = $conn->query($checkDuplicateSql);
+    $duplicateCount = $duplicateResult->fetch_assoc()['count'];
+    
+    if ($duplicateCount > 0) {
+        http_response_code(409); // Conflict status code
+        echo json_encode(["error" => "A product with the same name and supplier already exists"]);
+        exit;
+    }
+    
+    // Prepare product data for insertion
     $category_id = isset($data['category_id']) && $data['category_id'] !== 'custom' && $data['category_id'] !== '' ? 
                   $conn->real_escape_string($data['category_id']) : "NULL";
-    $supplier = $conn->real_escape_string($data['supplier']);
     $weight = $conn->real_escape_string($data['weight']);
     $price = $conn->real_escape_string($data['price']);
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
@@ -92,8 +109,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $product_id = $conn->insert_id;
         echo json_encode(["message" => "Product created successfully", "product_id" => $product_id]);
     } else {
-        http_response_code(500);
-        echo json_encode(["error" => "Failed to create product: " . $conn->error]);
+        if ($conn->errno == 1062) { // MySQL duplicate entry error code
+            http_response_code(409); // Conflict status code
+            echo json_encode(["error" => "A product with the same name and supplier already exists"]);
+        } else {
+            http_response_code(500);
+            echo json_encode(["error" => "Failed to create product: " . $conn->error]);
+        }
     }
 }
 
@@ -132,11 +154,38 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
     }
     
-    // Prepare product data for update
+    // Get current product data for comparison
+    $currentProductSql = "SELECT type, supplier FROM products WHERE product_id = $product_id";
+    $currentProductResult = $conn->query($currentProductSql);
+    
+    if (!$currentProductResult || $currentProductResult->num_rows === 0) {
+        http_response_code(404);
+        echo json_encode(["error" => "Product not found"]);
+        exit;
+    }
+    
+    $currentProduct = $currentProductResult->fetch_assoc();
     $type = $conn->real_escape_string($data['type']);
+    $supplier = $conn->real_escape_string($data['supplier']);
+    
+    // Check for duplicate only if name or supplier has changed
+    if ($currentProduct['type'] != $type || $currentProduct['supplier'] != $supplier) {
+        $checkDuplicateSql = "SELECT COUNT(*) as count FROM products 
+                              WHERE type = '$type' AND supplier = '$supplier' 
+                              AND product_id != $product_id AND is_deleted = 0";
+        $duplicateResult = $conn->query($checkDuplicateSql);
+        $duplicateCount = $duplicateResult->fetch_assoc()['count'];
+        
+        if ($duplicateCount > 0) {
+            http_response_code(409); // Conflict status code
+            echo json_encode(["error" => "Another product with the same name and supplier already exists"]);
+            exit;
+        }
+    }
+    
+    // Prepare product data for update
     $category_id = isset($data['category_id']) && $data['category_id'] !== 'custom' && $data['category_id'] !== '' ? 
                   $conn->real_escape_string($data['category_id']) : "NULL";
-    $supplier = $conn->real_escape_string($data['supplier']);
     $price = $conn->real_escape_string($data['price']);
     $expiry_date = !empty($data['expiry_date']) ? "'" . $conn->real_escape_string($data['expiry_date']) . "'" : "NULL";
     $stock_alert = !empty($data['stock_alert']) ? $conn->real_escape_string($data['stock_alert']) : "10.00";
@@ -155,8 +204,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     if ($conn->query($sql)) {
         echo json_encode(["message" => "Product updated successfully"]);
     } else {
-        http_response_code(500);
-        echo json_encode(["error" => "Failed to update product: " . $conn->error]);
+        if ($conn->errno == 1062) { // MySQL duplicate entry error code
+            http_response_code(409); // Conflict status code
+            echo json_encode(["error" => "Another product with the same name and supplier already exists"]);
+        } else {
+            http_response_code(500);
+            echo json_encode(["error" => "Failed to update product: " . $conn->error]);
+        }
     }
 }
 
@@ -190,6 +244,33 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PATCH' && isset($_GET['action']) && $_G
     }
     
     $product_id = $conn->real_escape_string($_GET['id']);
+    
+    // Check if restoring would create a duplicate
+    $checkSql = "SELECT p1.type, p1.supplier 
+                 FROM products p1 
+                 WHERE p1.product_id = $product_id";
+    $checkResult = $conn->query($checkSql);
+    
+    if ($checkResult && $checkResult->num_rows > 0) {
+        $product = $checkResult->fetch_assoc();
+        $type = $conn->real_escape_string($product['type']);
+        $supplier = $conn->real_escape_string($product['supplier']);
+        
+        $duplicateCheckSql = "SELECT COUNT(*) as count 
+                              FROM products 
+                              WHERE type = '$type' 
+                              AND supplier = '$supplier' 
+                              AND product_id != $product_id 
+                              AND is_deleted = 0";
+        $duplicateResult = $conn->query($duplicateCheckSql);
+        $duplicateCount = $duplicateResult->fetch_assoc()['count'];
+        
+        if ($duplicateCount > 0) {
+            http_response_code(409);
+            echo json_encode(["error" => "Cannot restore product: A product with the same name and supplier already exists"]);
+            exit;
+        }
+    }
     
     // Restore by setting is_deleted flag back to 0
     $sql = "UPDATE products SET is_deleted = 0 WHERE product_id = $product_id";
