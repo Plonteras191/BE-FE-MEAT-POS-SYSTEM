@@ -109,18 +109,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception("Failed to create sale item: " . $conn->error);
                 }
                 
-                // Update product inventory
+                // Update product inventory - only update the weight, don't create stock adjustment
                 $updateSql = "UPDATE products SET weight = weight - $quantity WHERE product_id = $product_id";
                 if (!$conn->query($updateSql)) {
                     throw new Exception("Failed to update product inventory: " . $conn->error);
                 }
                 
-                // Record the stock adjustment
-                $adjustmentSql = "INSERT INTO stock_adjustments (product_id, quantity_change, reason, notes) 
-                                VALUES ($product_id, -$quantity, 'sale', 'Sale ID: $sale_id')";
-                if (!$conn->query($adjustmentSql)) {
-                    throw new Exception("Failed to record stock adjustment: " . $conn->error);
-                }
+                // REMOVED: Stock adjustment record code
             }
         }
         

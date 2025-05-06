@@ -47,6 +47,7 @@ const Reports = () => {
   const [reportData, setReportData] = useState(null);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [showSaleDetail, setShowSaleDetail] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [saleReceiptCSVData, setSaleReceiptCSVData] = useState([]);
@@ -59,7 +60,7 @@ const Reports = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [dateFilterType, setDateFilterType] = useState('calendar'); // 'calendar' or 'all'
+  const [dateFilterType, setDateFilterType] = useState('calendar'); // 'calendar', 'month', or 'all'
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState({
@@ -98,7 +99,7 @@ const Reports = () => {
   useEffect(() => {
     console.log("Date or tab changed, fetching new report. Date:", selectedDate);
     fetchReport(activeTab);
-  }, [activeTab, filters, selectedDate, dateFilterType]);
+  }, [activeTab, filters, selectedDate, selectedMonth, dateFilterType]);
 
   // Reset current page when changing tabs
   useEffect(() => {
@@ -111,12 +112,22 @@ const Reports = () => {
   // Function to get date based on filter or calendar selection
   const getDateForReport = () => {
     if (dateFilterType === 'all') {
-      return {}; // No date filter for "All Data"
+      return {}; // No date filter
+    } else if (dateFilterType === 'calendar') {
+      return { 
+        start_date: selectedDate, 
+        end_date: selectedDate 
+      };
+    } else if (dateFilterType === 'month') {
+      const [year, month] = selectedMonth.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const startDate = `${selectedMonth}-01`;
+      const endDate = `${selectedMonth}-${lastDay.toString().padStart(2, '0')}`;
+      return {
+        start_date: startDate,
+        end_date: endDate
+      };
     }
-    return { 
-      start_date: selectedDate, 
-      end_date: selectedDate 
-    };
   };
 
   const fetchReport = async (reportType) => {
@@ -188,6 +199,7 @@ const Reports = () => {
   const handleResetFilters = () => {
     setFilters({ categoryId: '', receiptNo: '', productId: '', reason: '' });
     setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+    setSelectedMonth(format(new Date(), 'yyyy-MM'));
     setDateFilterType('calendar');
     // Fetch fresh data after resetting filters
     setTimeout(() => fetchReport(activeTab), 0);
@@ -278,8 +290,13 @@ const Reports = () => {
   const getDateLabel = () => {
     if (dateFilterType === 'all') {
       return 'All Data';
+    } else if (dateFilterType === 'calendar') {
+      return `Selected: ${format(parseISO(selectedDate), 'MMM dd, yyyy')}`;
+    } else if (dateFilterType === 'month') {
+      const [year, month] = selectedMonth.split('-');
+      const date = new Date(year, month - 1, 1);
+      return `Month: ${format(date, 'MMMM yyyy')}`;
     }
-    return `Selected: ${format(parseISO(selectedDate), 'MMM dd, yyyy')}`;
   };
 
   // Calculate subtotal from sale data
@@ -321,8 +338,6 @@ const Reports = () => {
     
     return data.slice(startIndex, endIndex);
   };
-
-  
 
   // Dynamic component rendering based on report type
   const renderReportContent = () => {
@@ -472,6 +487,13 @@ const Reports = () => {
             Calendar
           </button>
           <button 
+            className={`date-filter-button ${dateFilterType === 'month' ? 'active' : ''}`}
+            onClick={() => setDateFilterType('month')}
+          >
+            <CalendarIcon size={16} />
+            Month
+          </button>
+          <button 
             className={`date-filter-button ${dateFilterType === 'all' ? 'active' : ''}`}
             onClick={() => setDateFilterType('all')}
           >
@@ -487,6 +509,16 @@ const Reports = () => {
               value={selectedDate}
               onChange={handleDateSelect}
               className="date-picker"
+            />
+          </div>
+        )}
+        {dateFilterType === 'month' && (
+          <div className="month-picker">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="month-picker-input"
             />
           </div>
         )}
@@ -509,7 +541,7 @@ const Reports = () => {
       <div className="report-actions">
         <button 
           className="export-button"
-          onClick={() => downloadExcel(prepareCSVData(), `${activeTab}_report_${dateFilterType === 'calendar' ? selectedDate : 'all_data'}`)}
+          onClick={() => downloadExcel(prepareCSVData(), `${activeTab}_report_${dateFilterType === 'all' ? 'all_data' : dateFilterType === 'calendar' ? selectedDate : selectedMonth}`)}
           disabled={!reportData}
         >
           <FileSpreadsheet size={16} />
@@ -518,7 +550,7 @@ const Reports = () => {
         
         <CSVLink
           data={prepareCSVData()}
-          filename={`${activeTab}_report_${dateFilterType === 'calendar' ? format(parseISO(selectedDate), 'yyyy-MM-dd') : 'all_data'}.csv`}
+          filename={`${activeTab}_report_${dateFilterType === 'all' ? 'all_data' : dateFilterType === 'calendar' ? format(parseISO(selectedDate), 'yyyy-MM-dd') : selectedMonth}.csv`}
           className="export-button"
           target="_blank"
           disabled={!reportData}
