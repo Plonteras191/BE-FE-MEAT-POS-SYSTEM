@@ -447,7 +447,7 @@ const ManageInventory = () => {
         if (weight === 0) return <span className="status-badge no-stock-badge">NO STOCK</span>;
         if (daysLeft !== null && daysLeft <= EXPIRY_WARNING_DAYS) return <span className="status-badge expiring-badge">Expiring in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
         if (weight > 0 && weight <= stockAlert) return <span className="status-badge low-stock-badge">LOW STOCK</span>;
-        return <span className="status-badge good-status-badge">ACTIVE</span>;
+        return <span className="status-badge good-status-badge">FRESH</span>;
     };
 
     const isDateDisabled = (date) => {
