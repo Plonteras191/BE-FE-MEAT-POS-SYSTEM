@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $lowStockResult = $conn->query($lowStockSql);
         $response['low_stock_count'] = $lowStockResult->fetch_assoc()['total'];
         
-        // Get today's sales count
-        $todaySalesSql = "SELECT COUNT(*) as total, SUM(total_amount) as amount FROM sales WHERE DATE(sale_date) = '$today'";
+        // Get today's sales count - Make sure to use current date with proper timezone
+        $todaySalesSql = "SELECT COUNT(*) as total, IFNULL(SUM(total_amount), 0) as amount FROM sales WHERE DATE(sale_date) = CURRENT_DATE()";
         $todaySalesResult = $conn->query($todaySalesSql);
         $todaySales = $todaySalesResult->fetch_assoc();
         $response['today_sales_count'] = $todaySales['total'] ?: 0;

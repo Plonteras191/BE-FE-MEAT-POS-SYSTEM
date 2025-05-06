@@ -54,11 +54,16 @@ const Dashboard = () => {
         `/sales.php?start_date=${todayStr}&end_date=${todayStr}`
       );
 
+      // Calculate today's sales total amount
+      const todaySalesAmount = salesRes.data.reduce((total, sale) => {
+        return total + parseFloat(sale.total_amount || 0);
+      }, 0);
+
       setDashboardData({
         ...dashboardRes.data,
         total_products: productsRes.data.length,
         today_sales_count: salesRes.data.length,
-        // keep today_sales_amount from dashboardRes or override if needed
+        today_sales_amount: todaySalesAmount // Override with calculated amount from actual sales data
       });
       setError(null);
     } catch (err) {

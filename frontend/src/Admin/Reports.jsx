@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { 
-  Download, FileText, Filter, RefreshCw,
-  Package, DollarSign, Search, FileSpreadsheet, FileTextIcon,
-  XCircle, ChevronRight, CalendarIcon, Calendar,
-  ArrowUpDown, ChevronLeft, ChevronRight as ChevronRightIcon
+  Printer, RefreshCw, Package, DollarSign, ArrowUpDown, ChevronRight as ChevronRightIcon,
+  CalendarIcon, Calendar, ChevronLeft, XCircle, Download
 } from "lucide-react";
 import "../styles/Reports.css";
 import apiClient, { reportsApi } from "../services/api";
-import * as XLSX from 'xlsx';
-import { CSVLink } from "react-csv";
-import { format, parseISO, subDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 // Pagination component
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
@@ -50,7 +46,6 @@ const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [showSaleDetail, setShowSaleDetail] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
-  const [saleReceiptCSVData, setSaleReceiptCSVData] = useState([]);
   const [filters, setFilters] = useState({
     categoryId: '',
     receiptNo: '',
@@ -60,7 +55,7 @@ const Reports = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [dateFilterType, setDateFilterType] = useState('calendar'); // 'calendar', 'month', or 'all'
+  const [dateFilterType, setDateFilterType] = useState('calendar'); // 'calendar' or 'month'
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState({
@@ -71,7 +66,6 @@ const Reports = () => {
   const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
-    // Fetch categories for filters
     const fetchCategories = async () => {
       try {
         const response = await apiClient.get('/categories.php');
@@ -81,7 +75,6 @@ const Reports = () => {
       }
     };
 
-    // Fetch products for stock adjustment filters
     const fetchProducts = async () => {
       try {
         const response = await apiClient.get('/products.php');
@@ -95,13 +88,10 @@ const Reports = () => {
     fetchProducts();
   }, []);
 
-  // Effect to automatically apply filters when they change or when tab changes
   useEffect(() => {
-    console.log("Date or tab changed, fetching new report. Date:", selectedDate);
     fetchReport(activeTab);
   }, [activeTab, filters, selectedDate, selectedMonth, dateFilterType]);
 
-  // Reset current page when changing tabs
   useEffect(() => {
     setCurrentPage(prev => ({
       ...prev,
@@ -109,11 +99,8 @@ const Reports = () => {
     }));
   }, [activeTab]);
 
-  // Function to get date based on filter or calendar selection
   const getDateForReport = () => {
-    if (dateFilterType === 'all') {
-      return {}; // No date filter
-    } else if (dateFilterType === 'calendar') {
+    if (dateFilterType === 'calendar') {
       return { 
         start_date: selectedDate, 
         end_date: selectedDate 
@@ -133,16 +120,12 @@ const Reports = () => {
   const fetchReport = async (reportType) => {
     setError(null);
     setIsLoading(true);
-    setReportData(null); // Clear previous data to ensure re-render
+    setReportData(null);
   
     try {
-      // Get date parameters based on selected date and filter type
       const dateParams = getDateForReport();
-      
-      // Build query parameters based on report type and date range
       const params = { ...dateParams };
       
-      // Add specific filters based on report type
       if (reportType === 'sales' && filters.categoryId) {
         params.category_id = filters.categoryId;
       }
@@ -151,7 +134,6 @@ const Reports = () => {
         params.receipt_no = filters.receiptNo;
       }
   
-      // Add stock adjustment specific filters
       if (reportType === 'stock_adjustments') {
         if (filters.productId) {
           params.product_id = filters.productId;
@@ -161,13 +143,9 @@ const Reports = () => {
         }
       }
       
-      console.log(`Fetching ${reportType} report with params:`, params);
-      
-      // Using reportsApi to fetch report data
       const response = await reportsApi.getReport(reportType, params);
       
       if (response && response.data) {
-        console.log(`${reportType} report data:`, response.data);
         setReportData(response.data);
       } else {
         setError(`No data available for ${reportType} report`);
@@ -191,9 +169,7 @@ const Reports = () => {
   };
 
   const handleDateSelect = (e) => {
-    const newDate = e.target.value;
-    console.log("Date changed to:", newDate);
-    setSelectedDate(newDate);
+    setSelectedDate(e.target.value);
   };
 
   const handleResetFilters = () => {
@@ -201,145 +177,99 @@ const Reports = () => {
     setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
     setSelectedMonth(format(new Date(), 'yyyy-MM'));
     setDateFilterType('calendar');
-    // Fetch fresh data after resetting filters
     setTimeout(() => fetchReport(activeTab), 0);
   };
 
-  const downloadExcel = (data, filename) => {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
-  };
-
-  // Function to prepare CSV data for a specific sale receipt
-  const prepareSaleReceiptCSVData = (sale) => {
-    if (!sale) return [];
-    
-    const csvData = [];
-    
-    // Add receipt header info
-    csvData.push(['Receipt Number', sale.receipt_no]);
-    csvData.push(['Date', format(parseISO(sale.sale_date), 'MMM dd, yyyy h:mm a')]);
-    csvData.push(['']);  // Empty row for spacing
-    
-    // Add summary data
-    const subtotal = calculateSubtotal(sale);
-    const discountAmount = calculateDiscountAmount(sale);
-    const discountPercentage = parseFloat(sale.discount || 0);
-    
-    csvData.push(['Subtotal', formatCurrency(subtotal)]);
-    csvData.push([`Discount (${discountPercentage}%)`, formatCurrency(discountAmount)]);
-    csvData.push(['Total Amount', formatCurrency(sale.total_amount)]);
-    csvData.push(['Amount Paid', formatCurrency(sale.amount_paid)]);
-    csvData.push(['Change', formatCurrency(calculateChange(sale))]);
-    csvData.push(['']);  // Empty row for spacing
-    
-    // Add item header
-    csvData.push(['Product', 'Quantity (kg)', 'Price per kg', 'Total']);
-    
-    // Add items data
-    if (sale.items && sale.items.length > 0) {
-      sale.items.forEach(item => {
-        csvData.push([
-          item.type,
-          parseFloat(item.quantity).toFixed(2),
-          formatCurrency(item.price_per_kg),
-          formatCurrency(item.quantity * item.price_per_kg)
-        ]);
-      });
-    }
-    
-    return csvData;
-  };
-
-  // Function to prepare CSV data based on report type
-  const prepareCSVData = () => {
-    if (!reportData) return [];
-    
-    switch (activeTab) {
+  const getCSVConfig = (tab) => {
+    switch (tab) {
       case 'sales':
-        return Array.isArray(reportData.detailed_sales) ? reportData.detailed_sales : [];
+        return {
+          headers: ['Receipt #', 'Date', 'Total Amount'],
+          data: reportData?.detailed_sales?.map(sale => [
+            sale.receipt_no,
+            format(parseISO(sale.sale_date), 'MMM dd, yyyy h:mm a'),
+            formatCurrency(sale.total_amount)
+          ]) || []
+        };
       case 'inventory':
-        return Array.isArray(reportData.products) ? reportData.products : [];
+        return {
+          headers: ['Product', 'Category', 'Supplier', 'Current Stock (kg)', 'Price per kg', 'Expiry Date', 'Alert Level', 'Value', 'Status'],
+          data: reportData?.products?.map(product => [
+            product.type,
+            product.category_name,
+            product.supplier,
+            parseFloat(product.current_stock).toFixed(2),
+            formatCurrency(product.price),
+            product.expiry_date ? format(parseISO(product.expiry_date), 'MMM dd, yyyy') : 'N/A',
+            parseFloat(product.stock_alert).toFixed(2),
+            formatCurrency(product.inventory_value),
+            parseFloat(product.current_stock) <= parseFloat(product.stock_alert) ? 'Low Stock' : 'OK'
+          ]) || []
+        };
       case 'stock_adjustments':
-        return Array.isArray(reportData.adjustments) ? reportData.adjustments : [];
+        return {
+          headers: ['ID', 'Product', 'Category', 'Adjustment Type', 'Quantity Change', 'Date', 'Reason', 'Notes'],
+          data: reportData?.adjustments?.map(adjustment => [
+            adjustment.adjustment_id,
+            adjustment.product_name,
+            adjustment.category_name,
+            parseFloat(adjustment.quantity_change) >= 0 ? 'Addition' : 'Reduction',
+            parseFloat(Math.abs(adjustment.quantity_change)).toFixed(2),
+            format(parseISO(adjustment.adjustment_date), 'MMM dd, yyyy h:mm a'),
+            adjustment.reason,
+            adjustment.notes
+          ]) || []
+        };
       default:
-        return [];
+        return { headers: [], data: [] };
     }
   };
 
-  const fetchSaleDetails = async (saleId) => {
-    try {
-      const response = await apiClient.get(`/sales.php?id=${saleId}`);
-      const saleData = response.data;
-      setSelectedSale(saleData);
-      
-      // Prepare CSV data for this sale
-      const csvData = prepareSaleReceiptCSVData(saleData);
-      setSaleReceiptCSVData(csvData);
-      
-      setShowSaleDetail(true);
-    } catch (err) {
-      console.error("Error fetching sale details:", err);
-      alert("Could not load sale details. Please try again.");
+  const generateCSVData = () => {
+    const { headers, data } = getCSVConfig(activeTab);
+    if (data.length === 0) return '';
+
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row => row.map(cell => `"${cell}"`).join(','))
+    ];
+
+    return csvRows.join('\n');
+  };
+
+  const handleExportCSV = () => {
+    const csvData = generateCSVData();
+    if (!csvData) {
+      alert('No data to export');
+      return;
     }
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${activeTab}_report.csv`;
+    link.click();
   };
 
-  // Helper function to get date label for reports
-  const getDateLabel = () => {
-    if (dateFilterType === 'all') {
-      return 'All Data';
-    } else if (dateFilterType === 'calendar') {
-      return `Selected: ${format(parseISO(selectedDate), 'MMM dd, yyyy')}`;
-    } else if (dateFilterType === 'month') {
-      const [year, month] = selectedMonth.split('-');
-      const date = new Date(year, month - 1, 1);
-      return `Month: ${format(date, 'MMMM yyyy')}`;
-    }
+  const printReceipt = () => {
+    if (!selectedSale) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Receipt</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('@media print {');
+    printWindow.document.write('  .no-print { display: none; }');
+    printWindow.document.write('  body { font-family: Arial, sans-serif; margin: 20px; }');
+    printWindow.document.write('  table { width: 100%; border-collapse: collapse; }');
+    printWindow.document.write('  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+    printWindow.document.write('  th { background-color: #f2f2f2; }');
+    printWindow.document.write('}');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(document.querySelector('.sale-detail-content').innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
   };
 
-  // Calculate subtotal from sale data
-  const calculateSubtotal = (sale) => {
-    const discountPercentage = parseFloat(sale.discount || 0);
-    const totalAmount = parseFloat(sale.total_amount);
-    return discountPercentage > 0 
-      ? totalAmount / (1 - (discountPercentage / 100))
-      : totalAmount;
-  };
-
-  // Calculate discount amount
-  const calculateDiscountAmount = (sale) => {
-    const subtotal = calculateSubtotal(sale);
-    const totalAmount = parseFloat(sale.total_amount);
-    return subtotal - totalAmount;
-  };
-
-  // Calculate change amount
-  const calculateChange = (sale) => {
-    return sale.change_amount || 
-      parseFloat(sale.amount_paid) - parseFloat(sale.total_amount);
-  };
-
-  // Pagination handler
-  const handlePageChange = (tab, newPage) => {
-    setCurrentPage(prev => ({
-      ...prev,
-      [tab]: newPage
-    }));
-  };
-
-  // Get paginated data
-  const getPaginatedData = (data, tab) => {
-    if (!data || !Array.isArray(data)) return [];
-    
-    const startIndex = (currentPage[tab] - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    
-    return data.slice(startIndex, endIndex);
-  };
-
-  // Dynamic component rendering based on report type
   const renderReportContent = () => {
     if (isLoading) return <div className="loading-indicator">Loading report data...</div>;
     if (error) return <div className="error-message">{error}</div>;
@@ -375,7 +305,6 @@ const Reports = () => {
     }
   };
 
-  // Render dynamic filters based on active tab
   const renderFilters = () => {
     switch (activeTab) {
       case 'sales':
@@ -493,13 +422,6 @@ const Reports = () => {
             <CalendarIcon size={16} />
             Month
           </button>
-          <button 
-            className={`date-filter-button ${dateFilterType === 'all' ? 'active' : ''}`}
-            onClick={() => setDateFilterType('all')}
-          >
-            <FileText size={16} />
-            All Data
-          </button>
         </div>
         
         {dateFilterType === 'calendar' && (
@@ -525,7 +447,6 @@ const Reports = () => {
       </div>
 
       <div className="filter-container">
-        {/* Dynamic filters based on active tab */}
         <div className="additional-filters">
           {renderFilters()}
         </div>
@@ -539,26 +460,10 @@ const Reports = () => {
       </div>
       
       <div className="report-actions">
-        <button 
-          className="export-button"
-          onClick={() => downloadExcel(prepareCSVData(), `${activeTab}_report_${dateFilterType === 'all' ? 'all_data' : dateFilterType === 'calendar' ? selectedDate : selectedMonth}`)}
-          disabled={!reportData}
-        >
-          <FileSpreadsheet size={16} />
-          Export to Excel
+        <button className="export-button" onClick={handleExportCSV}>
+          <Download size={16} />
+          Export CSV
         </button>
-        
-        <CSVLink
-          data={prepareCSVData()}
-          filename={`${activeTab}_report_${dateFilterType === 'all' ? 'all_data' : dateFilterType === 'calendar' ? format(parseISO(selectedDate), 'yyyy-MM-dd') : selectedMonth}.csv`}
-          className="export-button"
-          target="_blank"
-          disabled={!reportData}
-        >
-          <FileTextIcon size={16} />
-          Export to CSV
-        </CSVLink>
-        
         <button className="refresh-button" onClick={() => fetchReport(activeTab)}>
           <RefreshCw size={16} />
           Refresh Data
@@ -569,21 +474,15 @@ const Reports = () => {
         {renderReportContent()}
       </div>
 
-      {/* Sale Details Modal */}
       {showSaleDetail && selectedSale && (
         <div className="sale-detail-modal">
           <div className="sale-detail-content">
             <div className="sale-detail-header">
               <h2>Sale Detail - Receipt #{selectedSale.receipt_no}</h2>
-              <div className="header-actions">
-                <CSVLink
-                  data={saleReceiptCSVData}
-                  filename={`Receipt_${selectedSale.receipt_no}_${format(parseISO(selectedSale.sale_date), 'yyyy-MM-dd')}.csv`}
-                  className="download-button"
-                  title="Download receipt as CSV"
-                >
-                  <Download size={20} />
-                </CSVLink>
+              <div className="header-actions no-print">
+                <button className="print-button" onClick={printReceipt}>
+                  <Printer size={20} />
+                </button>
                 <button 
                   className="close-button" 
                   onClick={() => setShowSaleDetail(false)}
@@ -601,7 +500,6 @@ const Reports = () => {
                 </span>
               </div>
               
-              {/* Calculate subtotal by adding discount amount to total */}
               {(() => {
                 const subtotal = calculateSubtotal(selectedSale);
                 const discountAmount = calculateDiscountAmount(selectedSale);
@@ -665,17 +563,62 @@ const Reports = () => {
       )}
     </div>
   );
+
+  function getDateLabel() {
+    if (dateFilterType === 'calendar') {
+      return `Selected: ${format(parseISO(selectedDate), 'MMM dd, yyyy')}`;
+    } else if (dateFilterType === 'month') {
+      const [year, month] = selectedMonth.split('-');
+      const date = new Date(year, month - 1, 1);
+      return `Month: ${format(date, 'MMMM yyyy')}`;
+    }
+  }
+
+  function calculateSubtotal(sale) {
+    const discountPercentage = parseFloat(sale.discount || 0);
+    const totalAmount = parseFloat(sale.total_amount);
+    return discountPercentage > 0 
+      ? totalAmount / (1 - (discountPercentage / 100))
+      : totalAmount;
+  }
+
+  function calculateDiscountAmount(sale) {
+    const subtotal = calculateSubtotal(sale);
+    const totalAmount = parseFloat(sale.total_amount);
+    return subtotal - totalAmount;
+  }
+
+  function calculateChange(sale) {
+    return sale.change_amount || 
+      parseFloat(sale.amount_paid) - parseFloat(sale.total_amount);
+  }
+
+  function fetchSaleDetails(saleId) {
+    apiClient.get(`/sales.php?id=${saleId}`)
+      .then(response => {
+        setSelectedSale(response.data);
+        setShowSaleDetail(true);
+      })
+      .catch(err => {
+        console.error("Error fetching sale details:", err);
+        alert("Could not load sale details. Please try again.");
+      });
+  }
+
+  function handlePageChange(tab, newPage) {
+    setCurrentPage(prev => ({
+      ...prev,
+      [tab]: newPage
+    }));
+  }
 };
 
-// Helper function for currency formatting - using Philippine Peso
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 };
 
-// Sales Report Component with date filtering and pagination
 const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
-
   const paginatedSales = getPaginatedData(data.detailed_sales || [], currentPage, itemsPerPage);
 
   return (
@@ -703,20 +646,20 @@ const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, 
             </tr>
           </thead>
           <tbody>
-          {data.top_products && data.top_products.length > 0 ? (
-            data.top_products.map((product, index) => (
-              <tr key={`top-product-${product.product_id || product.type}-${index}`}>
-                <td>{product.type}</td>
-                <td>{product.category_name}</td>
-                <td>{parseFloat(product.total_quantity).toFixed(2)} kg</td>
-                <td>{formatCurrency(product.total_revenue)}</td>
+            {data.top_products && data.top_products.length > 0 ? (
+              data.top_products.map((product, index) => (
+                <tr key={`top-product-${product.product_id || product.type}-${index}`}>
+                  <td>{product.type}</td>
+                  <td>{product.category_name}</td>
+                  <td>{parseFloat(product.total_quantity).toFixed(2)} kg</td>
+                  <td>{formatCurrency(product.total_revenue)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="no-data">No top products data available</td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="4" className="no-data">No top products data available</td>
-            </tr>
-          )}
+            )}
           </tbody>
         </table>
       </div>
@@ -741,7 +684,7 @@ const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, 
                   <td>{formatCurrency(sale.total_amount)}</td>
                   <td>
                     <button className="view-details-button" onClick={(e) => {
-                      e.stopPropagation(); // Prevent row click
+                      e.stopPropagation();
                       onSaleClick(sale.sale_id);
                     }}>
                       <ChevronRightIcon size={16} />
@@ -758,7 +701,6 @@ const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, 
           </tbody>
         </table>
         
-        {/* Pagination for Sales */}
         {data.detailed_sales && data.detailed_sales.length > 0 && (
           <div className="pagination-container">
             <Pagination 
@@ -774,20 +716,15 @@ const SalesReport = ({ data, onSaleClick, dateLabel, currentPage, onPageChange, 
   );
 };
 
-// Helper function to get paginated data
 const getPaginatedData = (data, currentPage, itemsPerPage) => {
   if (!data || !Array.isArray(data)) return [];
-  
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  
   return data.slice(startIndex, endIndex);
 };
 
-// Inventory Report Component with pagination
 const InventoryReport = ({ data, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
-
   const paginatedProducts = getPaginatedData(data.products || [], currentPage, itemsPerPage);
 
   return (
@@ -855,7 +792,6 @@ const InventoryReport = ({ data, currentPage, onPageChange, itemsPerPage }) => {
           </tbody>
         </table>
         
-        {/* Pagination for Inventory */}
         {data.products && data.products.length > 0 && (
           <div className="pagination-container">
             <Pagination 
@@ -871,10 +807,8 @@ const InventoryReport = ({ data, currentPage, onPageChange, itemsPerPage }) => {
   );
 };
 
-// Stock Adjustments Report Component with pagination
 const StockAdjustmentsReport = ({ data, dateLabel, currentPage, onPageChange, itemsPerPage }) => {
   if (!data) return null;
-  
   const paginatedAdjustments = getPaginatedData(data.adjustments || [], currentPage, itemsPerPage);
 
   return (
@@ -912,24 +846,24 @@ const StockAdjustmentsReport = ({ data, dateLabel, currentPage, onPageChange, it
             </tr>
           </thead>
           <tbody>
-          {data.top_products && data.top_products.length > 0 ? (
-            data.top_products.map((product, index) => (
-              <tr key={`top-adjusted-${product.product_id}-${index}`}>
-                <td>{product.type}</td>
-                <td>{product.category_name}</td>
-                <td>{product.adjustment_count}</td>
-                <td className={parseFloat(product.net_change) >= 0 ? 'positive-change' : 'negative-change'}>
-                  {parseFloat(product.net_change).toFixed(2)} kg
-                </td>
-                <td className="positive-change">{parseFloat(product.additions || 0).toFixed(2)} kg</td>
-                <td className="negative-change">{parseFloat(Math.abs(product.reductions) || 0).toFixed(2)} kg</td>
+            {data.top_products && data.top_products.length > 0 ? (
+              data.top_products.map((product, index) => (
+                <tr key={`top-adjusted-${product.product_id}-${index}`}>
+                  <td>{product.type}</td>
+                  <td>{product.category_name}</td>
+                  <td>{product.adjustment_count}</td>
+                  <td className={parseFloat(product.net_change) >= 0 ? 'positive-change' : 'negative-change'}>
+                    {parseFloat(product.net_change).toFixed(2)} kg
+                  </td>
+                  <td className="positive-change">{parseFloat(product.additions || 0).toFixed(2)} kg</td>
+                  <td className="negative-change">{parseFloat(Math.abs(product.reductions) || 0).toFixed(2)} kg</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="no-data">No top adjusted products data available</td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" className="no-data">No top adjusted products data available</td>
-            </tr>
-          )}
+            )}
           </tbody>
         </table>
       </div>
@@ -947,10 +881,10 @@ const StockAdjustmentsReport = ({ data, dateLabel, currentPage, onPageChange, it
               <th>Date</th>
               <th>Reason</th>
               <th>Notes</th>
-              </tr>
+            </tr>
           </thead>
           <tbody>
-          {paginatedAdjustments && paginatedAdjustments.length > 0 ? (
+            {paginatedAdjustments && paginatedAdjustments.length > 0 ? (
               paginatedAdjustments.map((adjustment) => (
                 <tr key={adjustment.adjustment_id}>
                   <td>{adjustment.adjustment_id}</td>
@@ -973,7 +907,6 @@ const StockAdjustmentsReport = ({ data, dateLabel, currentPage, onPageChange, it
           </tbody>
         </table>
         
-        {/* Pagination for Stock Adjustments */}
         {data.adjustments && data.adjustments.length > 0 && (
           <div className="pagination-container">
             <Pagination 
