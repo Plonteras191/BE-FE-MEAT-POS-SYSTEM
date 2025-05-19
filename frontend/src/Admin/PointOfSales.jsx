@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo } from "react";
-import "../styles/PointOfSales.css"; // Make sure this path is correct
-import Modal from "../components/Modal.jsx"; // Make sure this path is correct
-import { productsApi } from "../services/api.js"; // Make sure this path is correct
+import "../styles/PointOfSales.css";
+import Modal from "../components/Modal.jsx";
+import { productsApi } from "../services/api.js";
 
 const PointOfSales = () => {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
-  const [discount, setDiscount] = useState("0"); // Initialize as string "0" or ""
-  const [discountError, setDiscountError] = useState(""); // State for discount inline error
+  const [discount, setDiscount] = useState("0");
+  const [discountError, setDiscountError] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null); // General error for fetching products
-  const [successMessage, setSuccessMessage] = useState(""); // General success message
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [modalConfig, setModalConfig] = useState({
@@ -31,6 +31,7 @@ const PointOfSales = () => {
 
   const [cartErrors, setCartErrors] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -40,7 +41,13 @@ const PointOfSales = () => {
     try {
       setIsLoading(true);
       const response = await productsApi.getAll();
-      setProducts(response.data);
+      
+      const transformedProducts = response.data.map(product => ({
+        ...product,
+        supplier_name: product.supplier_name || product.supplier
+      }));
+      
+      setProducts(transformedProducts);
       setError(null);
     } catch (err) {
       showNotification("Error", "Failed to fetch products", "error");
@@ -128,12 +135,15 @@ const PointOfSales = () => {
           : item
       ));
     } else {
+      const supplierName = product.supplier_name || product.supplier || 'N/A';
+      
       setCart([...cart, {
         product_id: product.product_id,
         type: product.type,
+        supplier_name: supplierName,
         quantity: qty.toFixed(2),
         price: product.price,
-        maxStock: product.weight // Store max stock for cart validation
+        maxStock: product.weight
       }]);
     }
     closeQuantityModal();
@@ -150,7 +160,6 @@ const PointOfSales = () => {
 
   const handleQuantityChange = (productId, newValue) => {
     const cartItem = cart.find(item => item.product_id === productId);
-    // Find the original product details for max stock, as cartItem.maxStock is what we set
     const productInProductsList = products.find(p => p.product_id === productId);
     const maxStock = productInProductsList ? parseFloat(productInProductsList.weight) : (cartItem ? parseFloat(cartItem.maxStock) : 0);
 
@@ -175,16 +184,16 @@ const PointOfSales = () => {
     const value = e.target.value;
     let newDiscountError = "";
 
-    setDiscount(value); // Update state to reflect user's input immediately
+    setDiscount(value);
 
-    if (value === "") { // If input is empty, it's not an error for calculation (treat as 0 discount)
+    if (value === "") {
       setDiscountError("");
       return;
     }
 
     const numericValue = parseFloat(value);
 
-    if (isNaN(numericValue) && value !== "-") { // Allow typing "-", but not other non-numeric
+    if (isNaN(numericValue) && value !== "-") {
       newDiscountError = "Please enter a valid number.";
     } else if (numericValue < 0) {
       newDiscountError = "Discount cannot be negative.";
@@ -196,11 +205,9 @@ const PointOfSales = () => {
 
   const handleAmountPaidChange = (e) => {
     const value = e.target.value;
-    setAmountPaid(value); // Update state to reflect user's input immediately
+    setAmountPaid(value);
 
-    // Basic validation for negative (can be expanded)
     if (value !== "" && parseFloat(value) < 0) {
-      // Optionally, set an inline error for amountPaid too
       showNotification("Invalid Input", "Amount paid cannot be negative.", "error");
     }
   };
@@ -218,7 +225,7 @@ const PointOfSales = () => {
     }
     const numericDiscount = parseFloat(discount);
     if (isNaN(numericDiscount) || numericDiscount < 0 || numericDiscount > 100) {
-      return 0; // If error somehow missed or value is invalid, calculate with 0 discount
+      return 0;
     }
     return numericDiscount;
   }, [discount, discountError]);
@@ -242,7 +249,6 @@ const PointOfSales = () => {
     return amountPaid !== "" && (isNaN(paid) || paid < 0 || paid < totalAmount);
   }, [amountPaid, totalAmount]);
 
-
   const completeSale = async () => {
     if (discountError) {
       showNotification("Invalid Discount", `Please correct the discount value: ${discountError}`, "error");
@@ -256,8 +262,7 @@ const PointOfSales = () => {
       showNotification("Empty Cart", "No products in cart!", "warning");
       return;
     }
-    if (totalAmount <= 0 && subtotal > 0) { // Allow 0 total if subtotal is 0 (e.g. 100% discount on 0 items)
-                                       // but not if total is negative or zero due to excessive discount.
+    if (totalAmount <= 0 && subtotal > 0) {
       showNotification("Invalid Total", "Total amount after discount must be reasonable (e.g. not negative).", "error");
       return;
     }
@@ -275,15 +280,14 @@ const PointOfSales = () => {
         receipt_no: receiptNo,
         total_amount: totalAmount.toFixed(2),
         amount_paid: finalAmountPaid.toFixed(2),
-        discount: discountPercentageForCalculation.toFixed(2), // Use the validated percentage
+        discount: discountPercentageForCalculation.toFixed(2),
         items: cart.map(item => ({
           product_id: item.product_id,
-          quantity: parseFloat(item.quantity).toFixed(2), // Ensure quantity is valid number
+          quantity: parseFloat(item.quantity).toFixed(2),
           price_per_kg: parseFloat(item.price).toFixed(2)
         }))
       };
 
-      // Simulate API call
       console.log("Sale Data:", saleData);
       const saleResponse = await fetch("http://localhost/MEAT_POS/backend/api/sales.php", {
          method: "POST",
@@ -297,7 +301,6 @@ const PointOfSales = () => {
       }
       const saleResult = await saleResponse.json();
 
-      // Fix for TypeError: Ensure we have a number before calling toFixed
       const changeAmount = typeof saleResult.change_amount === 'number' ? 
         saleResult.change_amount.toFixed(2) : 
         change.toFixed(2);
@@ -312,7 +315,7 @@ const PointOfSales = () => {
       setDiscount("0");
       setDiscountError("");
       setAmountPaid("");
-      fetchProducts(); // Refresh product list for stock updates
+      fetchProducts();
     } catch (err) {
       showNotification(
         "Sale Error",
@@ -330,17 +333,33 @@ const PointOfSales = () => {
     return ["", ...Array.from(uniqueCategories)];
   }, [products]);
 
+  const suppliers = useMemo(() => {
+    const uniqueSuppliers = new Set(
+      products
+        .map(p => p.supplier_name || p.supplier)
+        .filter(Boolean)
+    );
+    return ["", ...Array.from(uniqueSuppliers)];
+  }, [products]);
+
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
+  };
+
+  const handleSupplierChange = (e) => {
+    setSelectedSupplier(e.target.value);
   };
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
       product.type.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      parseFloat(product.weight) > 0 && // Only show products with stock
-      (selectedCategory === "" || product.category_name === selectedCategory)
+      parseFloat(product.weight) > 0 &&
+      (selectedCategory === "" || product.category_name === selectedCategory) &&
+      (selectedSupplier === "" || 
+       (product.supplier_name && product.supplier_name === selectedSupplier) || 
+       (product.supplier && product.supplier === selectedSupplier))
     );
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory, selectedSupplier]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -356,12 +375,15 @@ const PointOfSales = () => {
     return "";
   };
 
+  const getSupplierName = (product) => {
+    return product.supplier_name || product.supplier || 'N/A';
+  };
+
   return (
     <div className="pos-container container">
       <h2>Point of Sales</h2>
 
       {error && <div className="error-message">{error}</div>}
-      {/* successMessage is handled by the modal now */}
 
       <Modal
         isOpen={modalConfig.isOpen}
@@ -379,13 +401,20 @@ const PointOfSales = () => {
         title={`Enter Quantity for ${quantityModal.product?.type || ""}`}
         type="info"
         actionButtons={[
-          { label: "Add", onClick: confirmAddToCart, type: "primary", disabled: !!quantityModal.error || !quantityModal.quantity || parseFloat(quantityModal.quantity) <= 0 },
+          { 
+            label: "Add", 
+            onClick: confirmAddToCart, 
+            type: "primary", 
+            disabled: !!quantityModal.error || !quantityModal.quantity || parseFloat(quantityModal.quantity) <= 0 
+          },
           { label: "Cancel", onClick: closeQuantityModal, type: "secondary" }
         ]}
       >
         <div className="quantity-modal-content">
           <p>Available: {quantityModal.product?.weight || 0} kg</p>
           <p>Price: ₱{quantityModal.product?.price || 0}/kg</p>
+          <p>Supplier: {quantityModal.product ? getSupplierName(quantityModal.product) : 'N/A'}</p>
+          
           <div className="form-group">
             <label htmlFor="quantity-input">Quantity (kg):</label>
             <input
@@ -406,8 +435,10 @@ const PointOfSales = () => {
       </Modal>
 
       <div className="pos-content">
+        {/* Products Section */}
         <div className="pos-products">
           <h3>Products</h3>
+          
           <div className="product-filters">
             <div className="product-search">
               <input
@@ -417,6 +448,7 @@ const PointOfSales = () => {
                 onChange={handleSearchChange}
               />
             </div>
+            
             <div className="product-category-filter">
               <select value={selectedCategory} onChange={handleCategoryChange}>
                 <option value="">All Categories</option>
@@ -425,134 +457,136 @@ const PointOfSales = () => {
                 ))}
               </select>
             </div>
+            
+            <div className="product-supplier-filter">
+              <select value={selectedSupplier} onChange={handleSupplierChange}>
+                <option value="">All Suppliers</option>
+                {suppliers.map((supplier, index) => (
+                  supplier && <option key={index} value={supplier}>{supplier}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {isLoading && !products.length ? ( // Show loading only if products are not yet loaded
+          {isLoading && !products.length ? (
             <p>Loading products...</p>
           ) : (
-            <>
+            <div className="product-grid">
+              {filteredProducts.length === 0 ? (
+                <p className="no-data">No products found</p>
+              ) : (
+                filteredProducts.map(product => (
+                  <div
+                    key={product.product_id}
+                    className={`product-box ${!canProductBeSold(product) ? 'disabled' : ''}`}
+                    onClick={() => canProductBeSold(product) && openQuantityModal(product)}
+                  >
+                    <h4>{product.type}</h4>
+                    <p>Category: {product.category_name || 'N/A'}</p>
+                    <p>Supplier: {getSupplierName(product)}</p>
+                    <p>Available: {product.weight} kg</p>
+                    <p>Price: ₱{product.price}/kg</p>
+                    <p>Status: {product.status}</p>
+                    {!canProductBeSold(product) && (
+                      <p className="status-message">{getStatusMessage(product)}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Cart Section */}
+        <div className="sold-products">
+          <h3>SELL</h3>
+          
+          <div className="cart-items">
+            {cart.length === 0 ? (
+              <p>No items.</p>
+            ) : (
               <table className="pos-table">
                 <thead>
                   <tr>
                     <th>Type</th>
-                    <th>Category</th>
-                    <th>Available (kg)</th>
+                    <th>Supplier</th>
+                    <th>Quantity (kg)</th>
                     <th>Price (₱/kg)</th>
-                    <th>Status</th>
+                    <th>Subtotal</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="no-data">No products found</td>
-                    </tr>
-                  ) : (
-                    filteredProducts.map(product => (
-                      <tr key={product.product_id} className={product.status !== 'fresh' ? product.status : ''}>
-                        <td>{product.type}</td>
-                        <td>{product.category_name || 'N/A'}</td>
-                        <td>{product.weight}</td>
-                        <td>{product.price}</td>
-                        <td>{product.status}</td>
+                  {cart.map(item => {
+                    const itemSubtotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
+                    return (
+                      <tr key={item.product_id}>
+                        <td>{item.type}</td>
+                        <td>{item.supplier_name || 'N/A'}</td>
                         <td>
-                          <button
-                            onClick={() => openQuantityModal(product)}
-                            disabled={!canProductBeSold(product)}
-                            title={getStatusMessage(product)}
-                            className={!canProductBeSold(product) ? "disabled-button" : ""}
-                          >
-                            Sell
-                          </button>
+                          <div className="quantity-field">
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              min="0.01"
+                              step="0.01"
+                              onChange={(e) => handleQuantityChange(item.product_id, e.target.value)}
+                              className={cartErrors[item.product_id] ? "quantity-input input-error" : "quantity-input"}
+                            />
+                            {cartErrors[item.product_id] && (
+                              <div className="inline-error">{cartErrors[item.product_id]}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td>{item.price}</td>
+                        <td>{itemSubtotal.toFixed(2)}</td>
+                        <td>
+                          <button onClick={() => handleRemoveFromCart(item.product_id)}>Remove</button>
                         </td>
                       </tr>
-                    ))
-                  )}
+                    );
+                  })}
                 </tbody>
               </table>
-            </>
-          )}
-        </div>
-
-        <div className="sold-products">
-          <h3>SELL</h3>
-          <div className="cart-options">
-            <div className="form-group">
-              <label htmlFor="discount">Discount (%)</label>
-              <input
-                type="number"
-                id="discount"
-                value={discount}
-                onChange={handleDiscountChange}
-                placeholder="0-100"
-                className={discountError ? "input-error" : ""}
-              />
-              {discountError && (
-                <div className="inline-error">{discountError}</div>
-              )}
-            </div>
+            )}
           </div>
 
-          {cart.length === 0 ? (
-            <p>No items in cart.</p>
-          ) : (
-            <table className="pos-table">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Quantity (kg)</th>
-                  <th>Price (₱/kg)</th>
-                  <th>Subtotal</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map(item => {
-                  const itemSubtotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
-                  return (
-                    <tr key={item.product_id}>
-                      <td>{item.type}</td>
-                      <td>
-                        <div className="quantity-field">
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            min="0.01"
-                            step="0.01"
-                            onChange={(e) => handleQuantityChange(item.product_id, e.target.value)}
-                            className={cartErrors[item.product_id] ? "quantity-input input-error" : "quantity-input"}
-                          />
-                          {cartErrors[item.product_id] && (
-                            <div className="inline-error">{cartErrors[item.product_id]}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td>{item.price}</td>
-                      <td>{itemSubtotal.toFixed(2)}</td>
-                      <td>
-                        <button onClick={() => handleRemoveFromCart(item.product_id)}>Remove</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-
+          {/* Totals and Payment Section */}
           <div className="totals-section">
             <div className="totals">
               <div className="total-row">
                 <span>Subtotal:</span>
                 <span>₱{subtotal.toFixed(2)}</span>
               </div>
+              
+              {/* Discount moved to here */}
+              <div className="cart-discount">
+                <div className="form-group">
+                  <label htmlFor="discount">Discount (%):</label>
+                  <input
+                    type="number"
+                    id="discount"
+                    value={discount}
+                    onChange={handleDiscountChange}
+                    placeholder="0-100"
+                    className={discountError ? "input-error" : ""}
+                  />
+                  {discountError && (
+                    <div className="inline-error">{discountError}</div>
+                  )}
+                </div>
+              </div>
+              
               <div className="total-row">
                 <span>Discount ({discountPercentageForCalculation.toFixed(0)}%):</span>
                 <span>- ₱{discountAmount.toFixed(2)}</span>
               </div>
+              
               <div className="total-row total">
                 <span>Total:</span>
                 <span>₱{totalAmount.toFixed(2)}</span>
               </div>
+              
               <div className="payment-row form-group">
                 <label htmlFor="amount-paid">Amount Paid:</label>
                 <input
@@ -566,16 +600,19 @@ const PointOfSales = () => {
                   placeholder="Enter amount"
                 />
               </div>
+              
               {insufficientPayment && amountPaid !== "" && parseFloat(amountPaid) >= 0 && (
                 <div className="payment-warning inline-error">
                   Insufficient amount! Need ₱{(totalAmount - (parseFloat(amountPaid) || 0)).toFixed(2)} more.
                 </div>
               )}
-               {parseFloat(amountPaid) < 0 && (
+              
+              {parseFloat(amountPaid) < 0 && (
                 <div className="payment-warning inline-error">
                   Amount paid cannot be negative.
                 </div>
               )}
+              
               {change > 0 && !insufficientPayment && (
                 <div className="total-row change">
                   <span>Change:</span>
@@ -590,11 +627,11 @@ const PointOfSales = () => {
               disabled={
                 isLoading ||
                 cart.length === 0 ||
-                !!discountError || // Disable if there's a discount input error
-                Object.values(cartErrors).some(error => error) || // Disable if any cart item has quantity error
-                insufficientPayment || // Disable if payment is insufficient
-                amountPaid === "" || // Disable if amount paid is empty
-                parseFloat(amountPaid) < 0 // Disable if amount paid is negative
+                !!discountError ||
+                Object.values(cartErrors).some(error => error) ||
+                insufficientPayment ||
+                amountPaid === "" ||
+                parseFloat(amountPaid) < 0
               }
             >
               {isLoading ? "Processing..." : "Complete Sale"}

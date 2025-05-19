@@ -611,22 +611,67 @@ const ManageInventory = () => {
                                             <td>{getStatusBadge(p)}</td>
                                             <td>{p.stock_alert} kg</td>
                                             <td className="action-cell">
-                                                {p.is_deleted === '1' ? (
-                                                    <div className="action-buttons-inline">
-                                                        <button className="restore-btn" onClick={() => handleRestore(p.product_id)} disabled={isLoading}>Restore</button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="action-buttons-stacked">
-                                                        <div className="action-buttons-inline">
-                                                            <button className="edit-btn" onClick={() => handleEdit(p)} disabled={isLoading}>Edit</button>
-                                                            <button className="remove-btn" onClick={() => handleSoftDelete(p.product_id)} disabled={isLoading}>Remove</button>
-                                                        </div>
-                                                        <div className="stock-actions action-buttons-inline">
-                                                            <button className="add-stock-btn" onClick={() => openStockAdjustmentModal(p, "add")} disabled={isLoading}>+ Stock</button>
-                                                            <button className="remove-stock-btn" onClick={() => openStockAdjustmentModal(p, "remove")} disabled={parseFloat(p.weight) <= 0 || isLoading}>- Stock</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                            {p.is_deleted === '1' ? (
+                                                <div className="action-buttons-inline">
+                                                <button 
+                                                    className="restore-btn icon-button" 
+                                                    onClick={() => handleRestore(p.product_id)} 
+                                                    disabled={isLoading}
+                                                    aria-label="Restore"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                                                    </svg>
+                                                </button>
+                                                </div>
+                                            ) : (
+                                                <div className="action-buttons-stacked">
+                                                <div className="action-buttons-inline">
+                                                    <button 
+                                                    className="edit-btn icon-button" 
+                                                    onClick={() => handleEdit(p)} 
+                                                    disabled={isLoading}
+                                                    aria-label="Edit"
+                                                    >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                                    </svg>
+                                                    </button>
+                                                    <button 
+                                                    className="remove-btn icon-button" 
+                                                    onClick={() => handleSoftDelete(p.product_id)} 
+                                                    disabled={isLoading}
+                                                    aria-label="Remove"
+                                                    >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                                    </svg>
+                                                    </button>
+                                                </div>
+                                                <div className="stock-actions action-buttons-inline">
+                                                    <button 
+                                                    className="add-stock-btn icon-button" 
+                                                    onClick={() => openStockAdjustmentModal(p, "add")} 
+                                                    disabled={isLoading}
+                                                    aria-label="Add stock"
+                                                    >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                                    </svg>
+                                                    </button>
+                                                    <button 
+                                                    className="remove-stock-btn icon-button" 
+                                                    onClick={() => openStockAdjustmentModal(p, "remove")} 
+                                                    disabled={parseFloat(p.weight) <= 0 || isLoading}
+                                                    aria-label="Remove stock"
+                                                    >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                                        <path d="M19 13H5v-2h14v2z"/>
+                                                    </svg>
+                                                    </button>
+                                                </div>
+                                                </div>
+                                            )}
                                             </td>
                                         </tr>
                                     ))

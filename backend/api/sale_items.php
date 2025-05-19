@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
     
     $saleId = $conn->real_escape_string($_GET['sale_id']);
-    $sql = "SELECT si.*, p.type 
+    $sql = "SELECT si.*, p.type, p.supplier as supplier_name 
             FROM sale_items si 
             JOIN products p ON si.product_id = p.product_id 
             WHERE si.sale_id = $saleId";
@@ -106,9 +106,19 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $conn->commit();
         
+        // Get the newly created sale item with product info
+        $getSaleItemSql = "SELECT si.*, p.type, p.supplier as supplier_name 
+                           FROM sale_items si 
+                           JOIN products p ON si.product_id = p.product_id 
+                           WHERE si.sale_item_id = $sale_item_id";
+        
+        $saleItemResult = $conn->query($getSaleItemSql);
+        $saleItemData = $saleItemResult->fetch_assoc();
+        
         echo json_encode([
             "message" => "Sale item created successfully",
-            "sale_item_id" => $sale_item_id
+            "sale_item_id" => $sale_item_id,
+            "sale_item" => $saleItemData
         ]);
     } catch (Exception $e) {
         $conn->rollback();
