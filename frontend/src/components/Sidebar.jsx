@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import HeaderLogo from "./HeaderLogo";
 import "../styles/Sidebar.css";
-import { Home, Package, DollarSign, PieChart, LogOut } from "lucide-react";
+import { Home, Package, PieChart, LogOut } from "lucide-react";
+// Import the Philippine Peso icon from react-icons
+import { FaPesoSign } from "react-icons/fa6";
 
 const Sidebar = ({ onLogout }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -64,7 +66,7 @@ const Sidebar = ({ onLogout }) => {
               to="/pos" 
               className={({ isActive }) => (isActive ? "active" : "")}
             >
-              <DollarSign size={20} />
+              <FaPesoSign size={20} />
               {isHovered && <span>POS</span>}
             </NavLink>
           </li>

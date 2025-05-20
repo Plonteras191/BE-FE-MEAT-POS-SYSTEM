@@ -340,38 +340,41 @@ const Reports = () => {
           </>
         );
       
-      case 'stock_adjustments':
-        return (
-          <>
-            <div className="filter-group">
-              <label htmlFor="productId">Product:</label>
-              <select
-                id="productId"
-                name="productId"
-                value={filters.productId}
-                onChange={handleFilterChange}
-              >
-                <option value="">All Products</option>
-                {products.map(product => (
-                  <option key={product.product_id} value={product.product_id}>
-                    {product.type}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
-              <label htmlFor="reason">Reason:</label>
-              <input
-                type="text"
-                id="reason"
-                name="reason"
-                value={filters.reason}
-                onChange={handleFilterChange}
-                placeholder="Filter by reason..."
-              />
-            </div>
-          </>
-        );
+      // In the renderFilters function for stock_adjustments
+case 'stock_adjustments':
+  return (
+    <>
+      <div className="filter-group">
+        <label htmlFor="productId">Product:</label>
+        <select
+          id="productId"
+          name="productId"
+          value={filters.productId}
+          onChange={handleFilterChange}
+        >
+          <option value="">All Products</option>
+          {products.map(product => (
+            <option key={product.product_id} value={product.product_id}>
+              {product.type}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="filter-group">
+        <label htmlFor="reason">Reason:</label>
+        <select
+          id="reason"
+          name="reason"
+          value={filters.reason}
+          onChange={handleFilterChange}
+        >
+          <option value="">All Reasons</option>
+          <option value="add">Addition</option>
+          <option value="remove">Removal</option>
+        </select>
+      </div>
+    </>
+  );
       
       default:
         return null;
@@ -387,7 +390,7 @@ const Reports = () => {
           className={`tab-button ${activeTab === 'sales' ? 'active' : ''}`}
           onClick={() => setActiveTab('sales')}
         >
-          <DollarSign size={16} />
+          
           Sales Reports
         </button>
         <button 
